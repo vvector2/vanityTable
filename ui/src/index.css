@@ -1,54 +1,518 @@
-* {
-  box-sizing: border-box;
+/* Mockup palette mapped onto Pico variables. Mobile first; wider layout at 768px. */
+:root[data-theme="light"] {
+  --ink: #1e2b2d;
+  --muted: #5b6b6d;
+  --line: #e4dfd8;
+  --surface: #ffffff;
+  --paper: #faf8f5;
+  --photo: #eae4da;
+  --rose: #b23a5b;
+  --rose-dark: #8c2644;
+  --rose-soft: #fbeaee;
+  --reject: #9a2f4b;
+  --accept: #1b5a4a;
+  --ok: #2f8f6f;
+  --display-font: "Bricolage Grotesque", system-ui, sans-serif;
+
+  --pico-font-family: "DM Sans", system-ui, sans-serif;
+  --pico-background-color: var(--paper);
+  --pico-color: var(--ink);
+  --pico-muted-color: var(--muted);
+  --pico-muted-border-color: var(--line);
+  --pico-h1-color: var(--ink);
+  --pico-h2-color: var(--ink);
+  --pico-primary: var(--rose);
+  --pico-primary-hover: var(--rose-dark);
+  --pico-primary-underline: transparent;
+  --pico-primary-hover-underline: transparent;
+  --pico-primary-focus: rgba(178, 58, 91, 0.3);
+  --pico-secondary: var(--ink);
+  --pico-secondary-border: var(--line);
+  --pico-secondary-hover: var(--ink);
+  --pico-secondary-hover-border: var(--ink);
+  --pico-secondary-hover-background: var(--paper);
+  --pico-border-radius: 12px;
 }
 
-body {
+h1,
+h2,
+p {
   margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #faf7f2;
-  color: #2b2b2b;
+}
+
+h1,
+h2 {
+  font-weight: 700;
+}
+
+/* Pico reads its button weight from this variable. */
+button {
+  --pico-font-weight: 700;
 }
 
 .app {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 16px;
-}
-
-.header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.sync {
-  margin: 4px 0 16px;
-  font-size: 0.875rem;
-  color: #6b6b6b;
-}
-
-.tabs {
+  min-height: 100vh;
   display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+
+.app-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--rose);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand h1 {
+  font-family: var(--display-font);
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.brand-tagline {
+  display: none;
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--muted);
 }
 
-.tab {
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+/* Main and tabs */
+
+.app-main {
   flex: 1;
-  min-height: 44px;
-  border: 1px solid #c9bfb0;
-  border-radius: 8px;
-  background: #fff;
-  font-size: 0.875rem;
-  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 0;
 }
 
-.tab.active {
-  background: #2b2b2b;
-  border-color: #2b2b2b;
+.status-tabs {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  /* One row on phones; the Polish labels scroll sideways instead of wrapping. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab-pill {
+  flex: none;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.tab-pill:hover {
+  border-color: var(--ink);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.tab-pill.active,
+.tab-pill.active:hover {
+  border-color: var(--ink);
+  background: var(--ink);
   color: #fff;
 }
 
-.empty {
+/* Shared card pieces */
+
+.card-surface {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: none;
+}
+
+.listing-photo {
+  position: relative;
+  height: 240px;
+  background: var(--photo);
+  color: var(--muted);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.listing-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.price {
+  font-family: var(--display-font);
+  font-weight: 700;
+  color: var(--rose);
+}
+
+.meta {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.olx-link {
+  align-self: flex-start;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.empty-state {
+  padding: 48px 24px;
   text-align: center;
-  color: #6b6b6b;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+/* Review (new listings) */
+
+.review {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 16px;
+  min-width: 0;
+}
+
+.review-body h2 {
+  font-family: var(--display-font);
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.review-body .price {
+  font-size: 28px;
+}
+
+.decision-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.decision-buttons button {
+  flex: 1 1 140px;
+  min-height: 56px;
+  margin: 0;
+  border-radius: 14px;
+  border: 2px solid;
+  font-size: 17px;
+}
+
+.btn-reject,
+.btn-reject:hover {
+  border-color: var(--reject);
+  background: var(--surface);
+  color: var(--reject);
+}
+
+.btn-reject:hover {
+  background: var(--rose-soft);
+}
+
+.btn-accept,
+.btn-accept:hover {
+  border-color: var(--accept);
+  background: var(--accept);
+  color: #fff;
+}
+
+.btn-accept:hover {
+  filter: brightness(1.1);
+}
+
+/* Sticks to the bottom of the screen on phones, like the mobile mockup. */
+.pager {
+  position: sticky;
+  bottom: 0;
+  margin: auto -16px 0;
+  padding: 12px 16px 24px;
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-pager {
+  flex: 1 1 0;
+  min-height: 60px;
+  margin: 0;
+  padding-inline: 8px;
+  white-space: nowrap;
+  border-radius: 16px;
+  border: 2px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  font-size: 17px;
+}
+
+.btn-pager:hover {
+  border-color: var(--ink);
+  background: var(--ink);
+  filter: brightness(1.3);
+}
+
+.btn-pager.outline,
+.btn-pager.outline:hover {
+  border-color: var(--ink);
+  background: var(--surface);
+  color: var(--ink);
+  filter: none;
+}
+
+.btn-pager.outline:hover {
+  background: var(--paper);
+}
+
+.pager-position {
+  flex: none;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Accepted and rejected grids */
+
+.listing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 16px;
+  padding-bottom: 24px;
+}
+
+.grid-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-card.is-rejected {
+  opacity: 0.7;
+}
+
+.grid-card .listing-photo {
+  height: 190px;
+}
+
+.grid-body {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px 20px;
+}
+
+.grid-body h2 {
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.grid-body .price {
+  font-size: 24px;
+}
+
+.btn-undo {
+  margin: auto 0 0;
+  min-height: 44px;
+  font-size: 15px;
+}
+
+.badges {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.badge-accepted {
+  padding-left: 10px;
+  background: var(--rose-soft);
+  color: var(--rose-dark);
+}
+
+.badge-expired {
+  background: var(--ink);
+  color: #fff;
+}
+
+/* Desktop */
+
+@media (min-width: 768px) {
+  .app-header {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 28px 48px;
+  }
+
+  .brand {
+    gap: 14px;
+  }
+
+  .brand-logo {
+    width: 44px;
+    height: 44px;
+  }
+
+  .brand h1 {
+    font-size: 28px;
+  }
+
+  .brand-tagline {
+    display: block;
+  }
+
+  .app-main {
+    gap: 24px;
+    padding: 32px 48px 56px;
+  }
+
+  .review {
+    gap: 20px;
+  }
+
+  .card-surface {
+    border-radius: 20px;
+  }
+
+  .review-card {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .review-card .listing-photo {
+    flex: 1 1 440px;
+    height: auto;
+    min-height: 440px;
+    font-size: 15px;
+  }
+
+  .review-body {
+    flex: 1 1 380px;
+    gap: 14px;
+    padding: 36px 40px;
+  }
+
+  .review-body h2 {
+    font-size: 32px;
+    line-height: 1.2;
+  }
+
+  .review-body .price {
+    font-size: 40px;
+  }
+
+  .review-body .meta,
+  .review-body .olx-link {
+    font-size: 16px;
+  }
+
+  .decision-buttons {
+    padding-top: 24px;
+  }
+
+  .pager {
+    position: static;
+    margin: 0;
+    padding: 0;
+    border-top: 0;
+    background: none;
+    gap: 16px;
+  }
+
+  .btn-pager {
+    min-height: 64px;
+    font-size: 18px;
+  }
+
+  .pager-position {
+    min-width: 96px;
+    font-size: 16px;
+  }
+
+  .listing-grid {
+    gap: 24px;
+    padding-bottom: 0;
+  }
+
+  .empty-state.card-surface {
+    padding: 72px 24px;
+    font-size: 18px;
+  }
 }
