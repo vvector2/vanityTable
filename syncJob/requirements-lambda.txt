@@ -1,0 +1,4 @@
+# Container image dependencies. Keep playwright in step with the base image tag in Dockerfile.
+playwright==1.64.0
+awslambdaric>=3
+boto3

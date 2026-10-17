@@ -1,6 +1,7 @@
 """Browser bot that loads OLX search results and saves every listing as JSON.
 
-Spike tool, run locally: pipenv run python olx_browser_bot.py --query toaletki
+Spike tool. Run locally: pipenv run python src/olx_browser_bot.py --query toaletki
+On AWS it runs inside the sync Lambda container image (see handler.py, Dockerfile).
 
 It drives headless Chromium through every results page of
 https://www.olx.pl/oferty/q-<query>/ and reads the listing data the OLX app
@@ -18,6 +19,7 @@ import argparse
 import html
 import json
 import logging
+import os
 import re
 import sys
 import time
@@ -36,6 +38,8 @@ USER_AGENT = "ToaletkaBot/0.1 (private, non-commercial listing watcher; Playwrig
 BLOCKED_RESOURCES = {"image", "media", "font"}
 CAPTCHA_MARKERS = ("captcha", "cf-challenge", "are you a robot", "jestes robotem", "jesteś robotem")
 STATE_VAR = "window.__PRERENDERED_STATE__"
+# Lambda has no user namespaces, a tiny /dev/shm and no GPU, so Chromium needs these flags there.
+LAMBDA_CHROMIUM_ARGS = ["--no-sandbox", "--no-zygote", "--single-process", "--disable-gpu", "--disable-dev-shm-usage"]
 
 
 class FetchStopped(Exception):
@@ -127,6 +131,10 @@ def load_results_page(page: Page, url: str) -> dict[str, Any]:
     return listing
 
 
+def chromium_args() -> list[str]:
+    return LAMBDA_CHROMIUM_ARGS if os.environ.get("AWS_LAMBDA_FUNCTION_NAME") else []
+
+
 def block_heavy_resources(route: Route) -> None:
     if route.request.resource_type in BLOCKED_RESOURCES:
         route.abort()
@@ -153,7 +161,7 @@ def scrape(query: str, delay: float, max_pages: int | None, headed: bool) -> dic
     seen: dict[str, dict[str, Any]] = {}
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=not headed)
+        browser = pw.chromium.launch(headless=not headed, args=chromium_args())
         context = browser.new_context(user_agent=USER_AGENT, locale="pl-PL")
         context.route("**/*", block_heavy_resources)
         page = context.new_page()
