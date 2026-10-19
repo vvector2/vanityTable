@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "27a4f3ff1e45020934edba670c8a41ec8ddbff4780948980ab8f6891f0c30233"
+            "sha256": "7b1d252ce25654385c18db7e10c42a596bd45be6d432eb6186c67737ec13d0f6"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -15,7 +15,26 @@
             }
         ]
     },
-    "default": {},
+    "default": {
+        "pybreaker": {
+            "hashes": [
+                "sha256:8df2d245c73ba40c8242c56ffb4f12138fbadc23e296224740c2028ea9dc1178",
+                "sha256:b4dab4a05195b7f2a64a6c1a6c4ba7a96534ef56ea7210e6bcb59f28897160e0"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.9'",
+            "version": "==1.4.1"
+        },
+        "tenacity": {
+            "hashes": [
+                "sha256:9e56f17539296baab7beabb08b92f6ee3d7be92d8be72d763360677c2ad6580e",
+                "sha256:a606b5c808d0cded4a359d5b9932d867ff2a6a6b64d37350260fd01bbdf83839"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.10'",
+            "version": "==9.2.1"
+        }
+    },
     "develop": {
         "boto3": {
             "hashes": [

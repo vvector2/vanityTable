@@ -16,7 +16,7 @@ services:
     volumes:
       - ./scripts/localstack-init:/etc/localstack/init/ready.d:ro
     healthcheck:
-      # Healthy only after the init script has created and seeded the table.
+      # Healthy only after the init script has created the table.
       test: ["CMD-SHELL", "curl -sf localhost:4566/_localstack/init/ready | grep -q '\"completed\": true'"]
       interval: 3s
       timeout: 3s

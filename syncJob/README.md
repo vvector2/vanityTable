@@ -12,6 +12,8 @@ pipenv run python src/run_local.py --max-pages 1      # through the Lambda handl
 pipenv run python src/olx_browser_bot.py --headed     # the bot alone, with a visible browser
 ```
 
+From the repository root, with the app running (`launch.cmd`), `quickSync` fetches the first OLX page and uploads it to the local API (`quickSync -Pages 3` for more). The local table starts empty, so this is how it gets data.
+
 ## Run locally (same container as Lambda)
 
 The image includes the Lambda Runtime Interface Emulator.

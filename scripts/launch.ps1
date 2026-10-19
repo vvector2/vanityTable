@@ -7,7 +7,7 @@
   - Starts docker-compose.local-dependencies.yml through WSL (Docker is not installed on Windows).
   - Installs Python and npm dependencies when they are missing.
   - Runs the API on http://localhost:8000 and the UI on http://localhost:5173 (or -UiPort).
-  Ctrl+C stops everything, including LocalStack. The table is recreated and seeded on every launch.
+  Ctrl+C stops everything, including LocalStack. The table is recreated empty on every launch; fill it with quickSync.
 #>
 param(
     # UI port; change it when 5173 is already taken.
