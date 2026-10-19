@@ -2,3 +2,5 @@
 playwright==1.64.0
 awslambdaric>=3
 boto3
+pybreaker>=1.4,<2
+tenacity>=9,<10

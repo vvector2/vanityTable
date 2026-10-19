@@ -1,6 +1,6 @@
 # Sync job
 
-OLX browser bot (`src/olx_browser_bot.py`) and the sync Lambda handler (`src/handler.py`) that runs it.
+OLX browser bot (`src/olx_browser_bot.py`) and the sync Lambda handler (`src/handler.py`) that runs it and sends the listings to the Listings API.
 Playwright and Chromium are too big for a zip package, so on AWS the Lambda runs as a container image.
 
 ## Run locally (Python)
@@ -51,3 +51,21 @@ The 30-minute schedule exists but is off. Turn it on with `-var sync_schedule_en
 | `delay`     | `PAGE_DELAY_SECONDS` | `10`       |
 
 Output goes to S3 when `OUTPUT_BUCKET` is set, otherwise to `OUTPUT_DIR` (default `output/`).
+
+## Upload to the Listings API
+
+After the fetch, every listing is sent to `POST /listings` of the Listings API (`src/listing_upload.py`), one request at a time.
+
+- Idempotent: `sourceId` in the body is the key, the website name plus the listing's ID on that website (`olx:<OLX ID>`). `201` means created, `409` means it already existed. Existing listings are never changed.
+- A failed listing is logged and skipped; the rest are still sent and the next run tries it again.
+- Transient errors (network, timeout, 429, 5xx) are retried with exponential backoff (`tenacity`). Other errors (400, 401, ...) are not.
+- A circuit breaker (`pybreaker`) opens after too many failed listings in a row (400/422 do not count, they are about one listing's data). The upload then stops; it also stops when the Lambda is about to time out.
+- Listings from a stopped fetch are sent too. The result has an `upload` summary (`created`, `already_existed`, `failed`, `failed_ids`, ...).
+
+| Env variable                           | Default            |
+| -------------------------------------- | ------------------ |
+| `LISTING_API_URL`                      | none (upload off)  |
+| `LISTING_API_KEY` (the API's `SYNC_API_KEY`) | empty        |
+| `LISTING_API_TIMEOUT_SECONDS`          | `10`               |
+| `LISTING_API_MAX_ATTEMPTS`             | `3`                |
+| `LISTING_API_MAX_CONSECUTIVE_FAILURES` | `10`               |

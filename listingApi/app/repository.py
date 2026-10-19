@@ -1,5 +1,6 @@
 """DynamoDB access for the Listings table. See docs/llstingApi.md, section DynamoDB."""
 
+import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -10,6 +11,8 @@ from botocore.exceptions import ClientError
 from app.models import CreateListingRequest, ListingDto, ListingStatus
 
 STATUS_INDEX = "status-firstSeenAt-index"
+# Fixed namespace for listing ids. Changing it would give known listings new ids.
+LISTING_ID_NAMESPACE = uuid.UUID("5b0f6d2e-8c7a-4e1b-9a3d-2f4c6e8a1b0d")
 
 
 class ListingNotFound(Exception):
@@ -24,6 +27,15 @@ def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def listing_id_for(source_id: str) -> str:
+    """Internal id of a listing, derived from its source id.
+
+    Deterministic, so the same source id always maps to the same item and the
+    `attribute_not_exists(id)` condition makes creates idempotent without a second index.
+    """
+    return str(uuid.uuid5(LISTING_ID_NAMESPACE, source_id))
+
+
 def _is_condition_failure(error: ClientError) -> bool:
     return error.response["Error"]["Code"] == "ConditionalCheckFailedException"
 
@@ -32,6 +44,7 @@ def to_dto(item: dict[str, Any]) -> ListingDto:
     price = item.get("price")
     return ListingDto(
         id=item["id"],
+        source_id=item.get("sourceId"),
         title=item.get("title", ""),
         price=int(price) if isinstance(price, Decimal) else price,
         currency=item.get("currency", "PLN"),
@@ -100,12 +113,17 @@ class ListingRepository:
             for key, value in listing.model_dump(by_alias=True).items()
             if value is not None
         }
-        item.update(status=ListingStatus.NEW.value, firstSeenAt=now, updatedAt=now)
+        item.update(
+            id=listing_id_for(listing.source_id),
+            status=ListingStatus.NEW.value,
+            firstSeenAt=now,
+            updatedAt=now,
+        )
         try:
             self._table.put_item(Item=item, ConditionExpression="attribute_not_exists(id)")
         except ClientError as error:
             if _is_condition_failure(error):
-                raise ListingAlreadyExists(listing.id) from error
+                raise ListingAlreadyExists(listing.source_id) from error
             raise
         return to_dto(item)
 

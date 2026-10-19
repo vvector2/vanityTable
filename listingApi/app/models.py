@@ -18,6 +18,7 @@ class CamelModel(BaseModel):
 
 class ListingDto(CamelModel):
     id: str
+    source_id: str | None = None
     title: str
     price: int | None = None
     currency: str
@@ -39,9 +40,13 @@ class ListingsPageDto(CamelModel):
 
 
 class CreateListingRequest(CamelModel):
-    """Sent by the sync job. Status and timestamps are set by the API."""
+    """Sent by the sync job. The internal id, status and timestamps are set by the API.
 
-    id: str = Field(min_length=1)
+    `source_id` is the idempotency key: the source website name plus the listing's ID on
+    that website, e.g. "olx:123". A second POST with the same value creates nothing.
+    """
+
+    source_id: str = Field(min_length=1, max_length=200)
     title: str
     price: int | None = None
     currency: str = "PLN"

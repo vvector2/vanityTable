@@ -4,6 +4,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+pybreaker = ">=1.4,<2"
+tenacity = ">=9,<10"
 
 [dev-packages]
 boto3 = "*"

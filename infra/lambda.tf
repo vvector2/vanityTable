@@ -18,6 +18,9 @@ resource "aws_lambda_function" "sync" {
       OUTPUT_BUCKET = aws_s3_bucket.sync_output.id
       OLX_QUERY     = var.olx_query
       MAX_PAGES     = var.max_pages
+      # An empty URL turns the upload to the Listings API off.
+      LISTING_API_URL = var.listing_api_url
+      LISTING_API_KEY = var.listing_api_key
     }
   }
 

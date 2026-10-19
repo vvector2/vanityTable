@@ -15,7 +15,7 @@ Backend for the Toaletka OLX finder frontend (React). Python + FastAPI, DynamoDB
 
 Not in MVP: `GET /listings/{id}`, price filter, failure alerting.
 
-Errors: `400` invalid params/body, `404` unknown listing id on PUT or DELETE, `409` listing id already exists on POST. Body: `{ "error": "VALIDATION_ERROR", "message": "..." }`.
+Errors: `400` invalid params/body, `404` unknown listing id on PUT or DELETE, `409` `sourceId` already exists on POST. Body: `{ "error": "VALIDATION_ERROR", "message": "..." }`.
 
 Auth (assumption): `X-API-Key` header. To be confirmed (single user vs multiple users).
 
@@ -29,11 +29,11 @@ The UI key lives in the browser, so it cannot create or delete. If `SYNC_API_KEY
 
 ## DTOs
 
-**ListingDto**: `id`, `title`, `price` (int, nullable), `currency`, `location` (nullable), `url`, `images[]`, `description` (nullable), `status`, `firstSeenAt`, `updatedAt` (ISO-8601 UTC).
+**ListingDto**: `id` (internal), `sourceId` (nullable), `title`, `price` (int, nullable), `currency`, `location` (nullable), `url`, `images[]`, `description` (nullable), `status`, `firstSeenAt`, `updatedAt` (ISO-8601 UTC).
 
 **ListingsPageDto**: `items[]`, `page`, `pageSize`, `totalItems`, `totalPages`.
 
-**CreateListingRequest**: `id` (OLX ID, required), `title`, `price` (int, nullable), `currency` (default `PLN`), `location` (nullable), `url`, `images[]`, `description` (nullable). The API sets `status=new`, `firstSeenAt` and `updatedAt`.
+**CreateListingRequest**: `sourceId` (required, idempotency key: website name plus the listing's ID on that website, e.g. `olx:123`), `title`, `price` (int, nullable), `currency` (default `PLN`), `location` (nullable), `url`, `images[]`, `description` (nullable). The API sets the internal `id`, `status=new`, `firstSeenAt` and `updatedAt`. The `id` is a UUIDv5 of `sourceId`, so the same `sourceId` always maps to the same item and a repeated POST returns `409` without changing anything.
 
 **UpdateListingStatusRequest**: `{ "status": "new" | "saved" | "rejected" }`.
 

@@ -30,3 +30,16 @@ variable "max_pages" {
   type        = string
   default     = ""
 }
+
+variable "listing_api_url" {
+  description = "Base URL of the Listings API the sync sends listings to. Empty turns the upload off."
+  type        = string
+  default     = ""
+}
+
+variable "listing_api_key" {
+  description = "X-API-Key for the Listings API."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

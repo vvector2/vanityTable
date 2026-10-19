@@ -75,7 +75,7 @@ def create_listing(body: CreateListingRequest, repository: Repository) -> Listin
     try:
         return repository.create(body)
     except ListingAlreadyExists:
-        raise ApiError(409, "CONFLICT", f"Listing {body.id} already exists") from None
+        raise ApiError(409, "CONFLICT", f"Listing with sourceId {body.source_id} already exists") from None
 
 
 @listings_write_router.delete(
