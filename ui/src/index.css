@@ -212,6 +212,46 @@ button {
   font-size: 16px;
 }
 
+/* Errors */
+
+.load-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.load-error p {
+  margin: 0;
+}
+
+.load-error .btn-retry {
+  flex: none;
+  padding-inline: 24px;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--reject);
+  border-radius: var(--pico-border-radius);
+  background: var(--rose-soft);
+  color: var(--reject);
+  font-size: 15px;
+}
+
+.error-banner .btn-dismiss {
+  flex-shrink: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
 /* Review (new listings) */
 
 .review {

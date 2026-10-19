@@ -22,8 +22,7 @@ function Badges({ listing }: { listing: Listing }) {
 }
 
 export default function ListingGrid({ status }: { status: ListingStatus }) {
-  const { listings, decide } = useListings();
-  const items = listings[status];
+  const { items, decide, pendingId } = useListings();
 
   if (items.length === 0) {
     return <p className="empty-state">Nic tu jeszcze nie ma.</p>;
@@ -43,7 +42,7 @@ export default function ListingGrid({ status }: { status: ListingStatus }) {
             <h2>{listing.title}</h2>
             <p className="price">{formatPrice(listing.price)}</p>
             <p className="meta">
-              {listing.location} · {formatWhen(listing.first_seen_at)}
+              {[listing.location, formatWhen(listing.first_seen_at)].filter(Boolean).join(" · ")}
             </p>
             <a className="olx-link" href={listing.url} target="_blank" rel="noreferrer">
               Zobacz na OLX →
@@ -51,6 +50,8 @@ export default function ListingGrid({ status }: { status: ListingStatus }) {
             <button
               type="button"
               className="btn-undo secondary outline"
+              disabled={pendingId === listing.olx_id}
+              aria-busy={pendingId === listing.olx_id}
               onClick={() => decide(listing.olx_id, "new")}
             >
               Przywróć do nowych

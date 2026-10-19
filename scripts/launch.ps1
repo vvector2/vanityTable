@@ -46,6 +46,8 @@ try {
 
     # Local settings for the API: everything points at LocalStack. Inherited by the child process.
     $env:API_KEY = "dev"
+    $env:SYNC_API_KEY = "dev-sync"
+    $env:ADMIN_API_KEY = "dev-admin"
     $env:TABLE_NAME = "Listings"
     $env:ALLOWED_ORIGINS = "http://localhost:$UiPort"
     $env:AWS_REGION = "eu-central-1"

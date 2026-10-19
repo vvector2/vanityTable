@@ -35,10 +35,21 @@ def register_error_handlers(app: FastAPI) -> None:
         return error_response(400, "VALIDATION_ERROR", message)
 
 
-def require_api_key(request: Request, x_api_key: Annotated[str | None, Header()] = None) -> None:
-    expected: str = request.app.state.settings.api_key
-    if x_api_key is None or not secrets.compare_digest(x_api_key, expected):
+def _check_key(provided: str | None, expected: str | None) -> None:
+    if provided is None or expected is None or not secrets.compare_digest(provided, expected):
         raise ApiError(401, "UNAUTHORIZED", "Missing or invalid X-API-Key header")
+
+
+def require_api_key(request: Request, x_api_key: Annotated[str | None, Header()] = None) -> None:
+    _check_key(x_api_key, request.app.state.settings.api_key)
+
+
+def require_sync_api_key(request: Request, x_api_key: Annotated[str | None, Header()] = None) -> None:
+    _check_key(x_api_key, request.app.state.settings.sync_api_key)
+
+
+def require_admin_api_key(request: Request, x_api_key: Annotated[str | None, Header()] = None) -> None:
+    _check_key(x_api_key, request.app.state.settings.admin_api_key)
 
 
 def get_repository(request: Request) -> ListingRepository:

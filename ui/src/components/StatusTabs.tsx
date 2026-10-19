@@ -8,7 +8,7 @@ const LABELS: Record<ListingStatus, string> = {
 };
 
 export default function StatusTabs() {
-  const { tab, setTab, listings } = useListings();
+  const { tab, setTab, counts } = useListings();
 
   return (
     <nav className="status-tabs" aria-label="Filtruj ogłoszenia">
@@ -20,7 +20,8 @@ export default function StatusTabs() {
           aria-pressed={status === tab}
           onClick={() => setTab(status)}
         >
-          {LABELS[status]} ({listings[status].length})
+          {LABELS[status]}
+          {counts && ` (${counts[status]})`}
         </button>
       ))}
     </nav>

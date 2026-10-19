@@ -3,7 +3,7 @@ import { useListings } from "../state/ListingsContext";
 import ListingPhoto from "./ListingPhoto";
 
 export default function ReviewView() {
-  const { current, listings, reviewIndex, next, prev, decide } = useListings();
+  const { current, items, reviewIndex, next, prev, decide, pendingId } = useListings();
 
   if (!current) {
     return (
@@ -13,6 +13,8 @@ export default function ReviewView() {
     );
   }
 
+  const pending = pendingId === current.olx_id;
+
   return (
     <section className="review">
       <article className="review-card card-surface">
@@ -21,7 +23,7 @@ export default function ReviewView() {
           <h2>{current.title}</h2>
           <p className="price">{formatPrice(current.price)}</p>
           <p className="meta">
-            {current.location} · {formatWhen(current.first_seen_at)}
+            {[current.location, formatWhen(current.first_seen_at)].filter(Boolean).join(" · ")}
           </p>
           <a className="olx-link" href={current.url} target="_blank" rel="noreferrer">
             Zobacz na OLX →
@@ -30,6 +32,7 @@ export default function ReviewView() {
             <button
               type="button"
               className="btn-reject"
+              disabled={pending}
               onClick={() => decide(current.olx_id, "rejected")}
             >
               Odrzuć
@@ -37,6 +40,7 @@ export default function ReviewView() {
             <button
               type="button"
               className="btn-accept"
+              disabled={pending}
               onClick={() => decide(current.olx_id, "accepted")}
             >
               Akceptuj
@@ -50,7 +54,7 @@ export default function ReviewView() {
           ← Poprzednie
         </button>
         <span className="pager-position">
-          {reviewIndex + 1} z {listings.new.length}
+          {reviewIndex + 1} z {items.length}
         </span>
         <button type="button" className="btn-pager" onClick={next}>
           Następne →

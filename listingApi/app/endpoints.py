@@ -3,20 +3,29 @@
 import math
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
-from app.api_utils import ApiError, Repository, require_api_key
+from app.api_utils import (
+    ApiError,
+    Repository,
+    require_admin_api_key,
+    require_api_key,
+    require_sync_api_key,
+)
 from app.models import (
+    CreateListingRequest,
     ListingCountsDto,
     ListingDto,
     ListingsPageDto,
     ListingStatus,
     UpdateListingStatusRequest,
 )
-from app.repository import ListingNotFound
+from app.repository import ListingAlreadyExists, ListingNotFound
 
 health_router = APIRouter()
 listings_router = APIRouter(prefix="/listings", dependencies=[Depends(require_api_key)])
+# Not used by the UI, so these take their own keys instead of the UI's API key.
+listings_write_router = APIRouter(prefix="/listings")
 
 
 @health_router.get("/health")
@@ -54,3 +63,27 @@ def update_listing_status(
         return repository.set_status(listing_id, body.status)
     except ListingNotFound:
         raise ApiError(404, "NOT_FOUND", f"Listing {listing_id} not found") from None
+
+
+@listings_write_router.post(
+    "",
+    response_model=ListingDto,
+    status_code=201,
+    dependencies=[Depends(require_sync_api_key)],
+)
+def create_listing(body: CreateListingRequest, repository: Repository) -> ListingDto:
+    try:
+        return repository.create(body)
+    except ListingAlreadyExists:
+        raise ApiError(409, "CONFLICT", f"Listing {body.id} already exists") from None
+
+
+@listings_write_router.delete(
+    "/{listing_id}", status_code=204, dependencies=[Depends(require_admin_api_key)]
+)
+def delete_listing(listing_id: str, repository: Repository) -> Response:
+    try:
+        repository.delete(listing_id)
+    except ListingNotFound:
+        raise ApiError(404, "NOT_FOUND", f"Listing {listing_id} not found") from None
+    return Response(status_code=204)

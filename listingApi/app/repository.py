@@ -7,13 +7,25 @@ from typing import Any
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 
-from app.models import ListingDto, ListingStatus
+from app.models import CreateListingRequest, ListingDto, ListingStatus
 
 STATUS_INDEX = "status-firstSeenAt-index"
 
 
 class ListingNotFound(Exception):
     pass
+
+
+class ListingAlreadyExists(Exception):
+    pass
+
+
+def utc_now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _is_condition_failure(error: ClientError) -> bool:
+    return error.response["Error"]["Code"] == "ConditionalCheckFailedException"
 
 
 def to_dto(item: dict[str, Any]) -> ListingDto:
@@ -64,7 +76,7 @@ class ListingRepository:
         return [to_dto(item) for item in items[skip:]]
 
     def set_status(self, listing_id: str, status: ListingStatus) -> ListingDto:
-        now = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+        now = utc_now()
         try:
             response = self._table.update_item(
                 Key={"id": listing_id},
@@ -75,7 +87,32 @@ class ListingRepository:
                 ReturnValues="ALL_NEW",
             )
         except ClientError as error:
-            if error.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            if _is_condition_failure(error):
                 raise ListingNotFound(listing_id) from error
             raise
         return to_dto(response["Attributes"])
+
+    def create(self, listing: CreateListingRequest) -> ListingDto:
+        """Inserts a listing as `new`. Never overwrites a known listing, so decisions are kept."""
+        now = utc_now()
+        item = {
+            key: value
+            for key, value in listing.model_dump(by_alias=True).items()
+            if value is not None
+        }
+        item.update(status=ListingStatus.NEW.value, firstSeenAt=now, updatedAt=now)
+        try:
+            self._table.put_item(Item=item, ConditionExpression="attribute_not_exists(id)")
+        except ClientError as error:
+            if _is_condition_failure(error):
+                raise ListingAlreadyExists(listing.id) from error
+            raise
+        return to_dto(item)
+
+    def delete(self, listing_id: str) -> None:
+        try:
+            self._table.delete_item(Key={"id": listing_id}, ConditionExpression="attribute_exists(id)")
+        except ClientError as error:
+            if _is_condition_failure(error):
+                raise ListingNotFound(listing_id) from error
+            raise

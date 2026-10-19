@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 
@@ -36,6 +36,19 @@ class ListingsPageDto(CamelModel):
     page_size: int
     total_items: int
     total_pages: int
+
+
+class CreateListingRequest(CamelModel):
+    """Sent by the sync job. Status and timestamps are set by the API."""
+
+    id: str = Field(min_length=1)
+    title: str
+    price: int | None = None
+    currency: str = "PLN"
+    location: str | None = None
+    url: str
+    images: list[str]
+    description: str | None = None
 
 
 class UpdateListingStatusRequest(CamelModel):
