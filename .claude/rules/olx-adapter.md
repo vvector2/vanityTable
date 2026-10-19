@@ -1,7 +1,7 @@
 ---
 paths:
-  - "backend/**/adapter/**"
-  - "backend/**/olx*.py"
+  - "syncJob/**/adapter/**"
+  - "syncJob/**/olx*.py"
 ---
 
 # OLX source adapter

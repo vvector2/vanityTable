@@ -1,6 +1,6 @@
 ---
 paths:
-  - "backend/**/*.py"
+  - "syncJob/**/*.py"
 ---
 
 # Python backend (Lambda)
