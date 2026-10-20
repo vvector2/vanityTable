@@ -19,11 +19,6 @@ data "aws_iam_policy_document" "sync" {
     resources = ["${aws_cloudwatch_log_group.sync.arn}:*"]
   }
 
-  statement {
-    actions   = ["s3:PutObject"]
-    resources = ["${aws_s3_bucket.output.arn}/listings/*"]
-  }
-
   # SecureString with the AWS managed key: its key policy already allows decrypt via SSM.
   statement {
     actions   = ["ssm:GetParameter"]

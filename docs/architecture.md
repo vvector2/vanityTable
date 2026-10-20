@@ -99,7 +99,7 @@ Access: Cognito scopes `listings/read` and `listings/decide` (UI) and `listings/
 | `common`      | DynamoDB `Listings` table and GSI, Cognito user pool, domain and `listings` resource server        |
 | `frontend`    | S3 bucket, CloudFront (OAC, `/api/*` behavior, prefix-stripping function), optional ACM + Route 53, Cognito UI client |
 | `listing_api` | ECR repository, Lightsail container service and deployment, IAM user for DynamoDB, API keys        |
-| `sync_job`    | ECR repository, Lambda (container image), EventBridge rule, output bucket, Cognito M2M client, SSM secret |
+| `sync_job`    | ECR repository, Lambda (container image), EventBridge rule, Cognito M2M client, SSM secret |
 
 - Remote state in an S3 bucket created by hand before the first apply, with S3 native locking.
 - Terraform does not build code. Scripts in `scripts/` do:

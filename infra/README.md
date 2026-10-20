@@ -7,7 +7,7 @@ One Terraform root module, one environment, one state. Design: `docs/architectur
 | `modules/common`      | DynamoDB `Listings` table, Cognito user pool, its domain and the `listings` resource server   |
 | `modules/frontend`    | UI bucket, CloudFront (`/` to S3, `/api/*` to the Listings API), optional ACM + Route 53, Cognito UI client |
 | `modules/listing_api` | ECR repository, Lightsail container service and deployment, DynamoDB IAM user, API keys       |
-| `modules/sync_job`    | ECR repository, sync Lambda, 30-minute EventBridge rule, output bucket, Cognito M2M client    |
+| `modules/sync_job`    | ECR repository, sync Lambda, 30-minute EventBridge rule, Cognito M2M client |
 
 ## First deployment
 
@@ -40,6 +40,14 @@ Create the UI user by hand (no self sign-up):
 ```
 aws cognito-idp admin-create-user --user-pool-id <pool-id> --username <email>
 ```
+
+## Removing the environment
+
+```
+./scripts/nuke-env.sh
+```
+
+Destroys everything in the state, including the Listings table (all decisions) and the Cognito user pool. It turns off their deletion protection with the AWS CLI first, and asks you to type the environment name unless you pass `--yes`. The state bucket is kept.
 
 ## Notes
 

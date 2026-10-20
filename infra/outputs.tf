@@ -52,10 +52,6 @@ output "sync_function_name" {
   value = module.sync_job.function_name
 }
 
-output "sync_output_bucket" {
-  value = module.sync_job.output_bucket
-}
-
 # Common
 
 output "listings_table_name" {

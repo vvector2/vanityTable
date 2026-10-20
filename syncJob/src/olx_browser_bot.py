@@ -1,4 +1,4 @@
-"""Browser bot that loads OLX search results and saves every listing as JSON.
+"""Browser bot that loads OLX search results and returns every listing.
 
 Spike tool. Run locally: pipenv run python src/olx_browser_bot.py --query toaletki
 On AWS it runs inside the sync Lambda container image (see handler.py, Dockerfile).
@@ -9,7 +9,7 @@ embeds in `window.__PRERENDERED_STATE__`. Each ad is normalized to the adapter
 contract in docs/architecture.md (section 3) plus a few non-personal extras.
 
 Fetching rules (.claude/rules/olx-adapter.md):
-- one page at a time, with a pause between pages
+- one page at a time, with a short randomized pause between pages
 - an honest User-Agent
 - stop on HTTP 429, captcha or any fetch error; no retries
 - seller data (user, contact, map coordinates) is never stored
@@ -20,11 +20,11 @@ import html
 import json
 import logging
 import os
+import random
 import re
 import sys
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
@@ -38,6 +38,8 @@ USER_AGENT = "ToaletkaBot/0.1 (private, non-commercial listing watcher; Playwrig
 BLOCKED_RESOURCES = {"image", "media", "font"}
 CAPTCHA_MARKERS = ("captcha", "cf-challenge", "are you a robot", "jestes robotem", "jesteś robotem")
 STATE_VAR = "window.__PRERENDERED_STATE__"
+# Added to the configured page delay: a random 0 to 0.5 s, so page loads are not evenly spaced.
+PAGE_DELAY_JITTER_SECONDS = 0.5
 # Lambda has no user namespaces, a tiny /dev/shm and no GPU, so Chromium needs these flags there.
 LAMBDA_CHROMIUM_ARGS = ["--no-sandbox", "--no-zygote", "--single-process", "--disable-gpu", "--disable-dev-shm-usage"]
 
@@ -189,7 +191,7 @@ def scrape(query: str, delay: float, max_pages: int | None, headed: bool) -> dic
                 if page_number >= last_page or not listing["ads"]:
                     break
                 page_number += 1
-                time.sleep(delay)
+                time.sleep(delay + random.uniform(0, PAGE_DELAY_JITTER_SECONDS))
             result["complete"] = True
         except FetchStopped as exc:
             logger.error("Stopped: %s", exc)
@@ -203,24 +205,37 @@ def scrape(query: str, delay: float, max_pages: int | None, headed: bool) -> dic
     result["listings"] = list(seen.values())
     result["listing_count"] = len(seen)
     result["finished_at"] = datetime.now(timezone.utc).isoformat()
+    log_coverage(result, max_pages)
     return result
+
+
+def log_coverage(result: dict[str, Any], max_pages: int | None) -> None:
+    """Logs whether every results page OLX reported was read."""
+    expected = min(result["total_pages"] or 0, max_pages or sys.maxsize)
+    if result["pages_fetched"] < expected:
+        logger.warning("Read %d of %d pages", result["pages_fetched"], expected)
+    else:
+        logger.info("Read all %d pages", result["pages_fetched"])
+    logger.info(
+        "%d unique listings; OLX reports totalElements=%s, visibleElements=%s",
+        result["listing_count"],
+        result["reported_total"],
+        result["reported_visible"],
+    )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--query", default="toaletki", help="OLX search query (default: toaletki)")
-    parser.add_argument("--out", type=Path, default=Path("output/listings.json"), help="output JSON file")
-    parser.add_argument("--delay", type=float, default=10.0, help="seconds to wait between pages (default: 10)")
+    parser.add_argument(
+        "--delay", type=float, default=0.5, help="seconds to wait between pages, plus 0-0.5 s random (default: 0.5)"
+    )
     parser.add_argument("--max-pages", type=int, default=None, help="stop after this many pages")
     parser.add_argument("--headed", action="store_true", help="show the browser window")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     result = scrape(args.query, args.delay, args.max_pages, args.headed)
-
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    logger.info("Saved %d listings to %s (complete=%s)", result["listing_count"], args.out, result["complete"])
     return 0 if result["complete"] else 1
 
 

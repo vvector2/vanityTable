@@ -10,7 +10,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--query", help="OLX search query (default: toaletki)")
     parser.add_argument("--max-pages", type=int, help="stop after this many pages")
-    parser.add_argument("--delay", type=float, help="seconds to wait between pages (default: 10)")
+    parser.add_argument("--delay", type=float, help="seconds to wait between pages, plus 0-0.5 s random (default: 0.5)")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
