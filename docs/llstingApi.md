@@ -45,6 +45,8 @@ Table `Listings`, on-demand billing, partition key `id` (S).
 
 GSI `status-firstSeenAt-index`: partition key `status` (S), sort key `firstSeenAt` (S), projection ALL.
 
+GSI `sourceId-index`: partition key `sourceId` (S), projection ALL, for lookups by `sourceId`. A GSI does not enforce uniqueness: `sourceId` is unique because `id` is a UUIDv5 of it and creates use `attribute_not_exists(id)`.
+
 | Access pattern           | Implementation                                                                     |
 | ------------------------ | ---------------------------------------------------------------------------------- |
 | List a tab, newest first | Query GSI by `status`, `ScanIndexForward=false`                                    |

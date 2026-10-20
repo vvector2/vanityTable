@@ -1,0 +1,64 @@
+data "aws_region" "current" {}
+
+# One user pool for the UI user and the sync job's machine client.
+# No self sign-up: users are created by hand (aws cognito-idp admin-create-user).
+resource "aws_cognito_user_pool" "main" {
+  name                     = var.name
+  username_attributes      = ["email"]
+  auto_verified_attributes = ["email"]
+  deletion_protection      = "ACTIVE"
+
+  admin_create_user_config {
+    allow_admin_create_user_only = true
+  }
+
+  password_policy {
+    minimum_length                   = 12
+    require_lowercase                = true
+    require_uppercase                = true
+    require_numbers                  = true
+    require_symbols                  = false
+    temporary_password_validity_days = 7
+  }
+
+  account_recovery_setting {
+    recovery_mechanism {
+      name     = "verified_email"
+      priority = 1
+    }
+  }
+}
+
+# Cognito domain prefixes are global per region, hence the random suffix.
+resource "random_id" "cognito_domain" {
+  byte_length = 4
+}
+
+# Hosts the sign-in page (UI) and the token endpoint (sync job, client credentials).
+resource "aws_cognito_user_pool_domain" "main" {
+  domain       = "${var.name}-${random_id.cognito_domain.hex}"
+  user_pool_id = aws_cognito_user_pool.main.id
+}
+
+# The Listings API as an OAuth resource server. Scopes map to docs/llstingApi.md, section Auth:
+# read and decide for the UI, create for the sync job. Admin delete stays on ADMIN_API_KEY.
+resource "aws_cognito_resource_server" "listings" {
+  user_pool_id = aws_cognito_user_pool.main.id
+  identifier   = "listings"
+  name         = "Listings API"
+
+  scope {
+    scope_name        = "read"
+    scope_description = "List listings and counts"
+  }
+
+  scope {
+    scope_name        = "decide"
+    scope_description = "Accept, reject or undo a listing"
+  }
+
+  scope {
+    scope_name        = "create"
+    scope_description = "Add listings found by the sync job"
+  }
+}

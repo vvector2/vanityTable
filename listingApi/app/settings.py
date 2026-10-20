@@ -7,6 +7,8 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Settings:
     table_name: str
+    # boto3 reads only AWS_DEFAULT_REGION outside Lambda, so AWS_REGION is passed explicitly.
+    region: str | None
     api_key: str
     # Optional: when unset, the endpoints that need them reject every request.
     sync_api_key: str | None
@@ -21,6 +23,7 @@ def load_settings() -> Settings:
     origins = os.environ.get("ALLOWED_ORIGINS", "")
     return Settings(
         table_name=os.environ.get("TABLE_NAME", "Listings"),
+        region=os.environ.get("AWS_REGION") or None,
         api_key=api_key,
         sync_api_key=os.environ.get("SYNC_API_KEY") or None,
         admin_api_key=os.environ.get("ADMIN_API_KEY") or None,

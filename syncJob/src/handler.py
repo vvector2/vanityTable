@@ -64,6 +64,20 @@ def save_result(result: dict[str, Any]) -> str:
     return str(path)
 
 
+def listing_api_key() -> str:
+    """X-API-Key for the Listings API: LISTING_API_KEY, or on AWS the SSM parameter named by LISTING_API_KEY_PARAMETER."""
+    key = os.environ.get("LISTING_API_KEY")
+    if key:
+        return key
+    parameter = os.environ.get("LISTING_API_KEY_PARAMETER")
+    if not parameter:
+        return ""
+    import boto3
+
+    response = boto3.client("ssm").get_parameter(Name=parameter, WithDecryption=True)
+    return response["Parameter"]["Value"]
+
+
 def upload(listings: list[dict[str, Any]], context: Any) -> dict[str, Any] | None:
     """Sends listings to the Listings API. Returns the upload summary, or None when not configured."""
     base_url = os.environ.get("LISTING_API_URL")
@@ -72,7 +86,7 @@ def upload(listings: list[dict[str, Any]], context: Any) -> dict[str, Any] | Non
         return None
     client = ListingApiClient(
         base_url,
-        os.environ.get("LISTING_API_KEY", ""),
+        listing_api_key(),
         timeout=float(os.environ.get("LISTING_API_TIMEOUT_SECONDS", 10)),
         max_attempts=int(os.environ.get("LISTING_API_MAX_ATTEMPTS", 3)),
         breaker_fail_max=int(os.environ.get("LISTING_API_MAX_CONSECUTIVE_FAILURES", 10)),

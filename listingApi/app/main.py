@@ -18,7 +18,9 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Toaletka Listings API")
     app.state.settings = settings
-    app.state.repository = ListingRepository(boto3.resource("dynamodb").Table(settings.table_name))
+    app.state.repository = ListingRepository(
+        boto3.resource("dynamodb", region_name=settings.region).Table(settings.table_name)
+    )
 
     app.add_middleware(
         CORSMiddleware,

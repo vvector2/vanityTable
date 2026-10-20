@@ -1,42 +1,43 @@
 # Toaletka: Architecture
 
-Date: 2026-10-17 | Status: draft, based on `toaletka-mvp.md`. Sections marked _(proposal)_ are not yet agreed.
+Date: 2026-10-19 | Status: draft, based on `mpv.md`; hosting, access and Terraform layout decided. Sections marked _(proposal)_ are not yet agreed.
 
 ## 1. Decisions so far
 
 | Area                   | Decision                                                                |
 | ---------------------- | ----------------------------------------------------------------------- |
 | Source                 | OLX public pages, fetched behind an adapter. Unreliability is accepted. |
-| Hosting                | AWS, serverless                                                         |
-| Backend                | Python (Lambda)                                                         |
+| Hosting                | AWS. Sync is serverless (Lambda); the Listings API is an always-on Lightsail container |
+| Backend                | Python: sync job on Lambda (container image), Listings API on FastAPI   |
 | UI                     | Simple React app, mobile-friendly                                       |
 | Persistence            | DynamoDB                                                                |
-| Infrastructure as code | Terraform                                                               |
+| Access protection      | Cognito user pool: one UI user (no self sign-up), M2M client for the sync job. X-API-Key stays until the code checks tokens |
+| Entry point            | CloudFront serves the UI at `/` and forwards `/api/*` to the Listings API. Route 53 custom domain optional |
+| Infrastructure as code | Terraform, one root with modules `common`, `frontend`, `listing_api`, `sync_job` |
 | Alerting               | None in MVP. Only the last successful sync time is shown in the UI.     |
 
 ## 2. Components
 
 ```
-EventBridge rule (rate 30 min)
-        |
-        v
-  Sync Lambda ---- reads config ---> SSM Parameter Store
-        |
-        |--- fetches ---> OLX (via source adapter)
-        |
-        v
-    DynamoDB  <---- API Lambda <---- API Gateway / function URL <---- React UI (S3 + CloudFront)
+Users --> Route 53 (optional) --> CloudFront --- /      --> S3 (React build)
+  |                                   +-------- /api/* --> Lightsail (Listings API, FastAPI) --> DynamoDB
+  +--> Cognito (sign-in)                                        ^
+                                                                | POST /listings
+EventBridge (rate 30 min) --> Sync Lambda ----------------------+
+                                  |--- token (client credentials) --> Cognito
+                                  +--- fetches ---> OLX (via source adapter)
 ```
 
 | Component                              | Responsibility                                                                                         |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | EventBridge rule                       | Triggers the sync Lambda with `rate(30 minutes)`                                                       |
-| Sync Lambda                            | Fetches listings, applies criteria, stores results, sets expired flags, writes the last-sync timestamp |
+| Sync Lambda                            | Fetches listings, applies criteria, sends new listings to the Listings API (`POST /listings`)          |
 | Source adapter (module in sync Lambda) | The only code that knows OLX. Returns normalized listings. Replaceable.                                |
-| API Lambda                             | Lists listings by status, records decisions, returns sync status                                       |
+| Listings API (Lightsail container)     | FastAPI. Lists listings by status, records decisions, accepts listings from the sync job. See `llstingApi.md` |
 | DynamoDB                               | Listings, decisions, sync metadata                                                                     |
-| SSM Parameter Store                    | Fuzzy threshold, exceptions list, search settings. Changeable without a redeploy.                      |
-| S3 + CloudFront                        | Hosts the static React build                                                                           |
+| Cognito user pool                      | UI sign-in (code flow with PKCE) and the sync job's client credentials (scope `listings/create`)       |
+| SSM Parameter Store                    | Sync job's Cognito client secret; later fuzzy threshold, exceptions list, search settings              |
+| S3 + CloudFront (+ Route 53)           | Hosts the static React build; `/api/*` goes to the Listings API on the same origin                     |
 
 ## 3. Normalized listing (adapter contract) _(proposal)_
 
@@ -44,30 +45,18 @@ The adapter returns objects with: `olx_id`, `title`, `description` (may be absen
 
 The rest of the app depends only on this shape, not on OLX.
 
-## 4. Data model (DynamoDB) _(proposal)_
+## 4. Data model (DynamoDB)
 
-One table, pay-per-request.
+The deployed table follows `llstingApi.md`, section DynamoDB:
 
-**Listing item**
-
-- Key: `PK = LISTING#<olx_id>`
-- Attributes: `title`, `description`, `price`, `url`, `photo_urls`, `status`, `expired`, `match_score`, `first_seen`, `last_seen`, `decided_at`, `price_at_decision`
-- `status` values: `new`, `accepted`, `rejected`, `filtered`
-
-**Sync metadata item**
-
-- Key: `PK = META#sync`
-- Attributes: `last_success_at`
-
-**Index**
-
-- One GSI on `status` + `first_seen` to serve the "to review", accepted and rejected views, sorted by newest.
-
-Notes:
-
-- `filtered` holds listings that were seen but did not pass the criteria. Storing them avoids re-fetching their descriptions every run and lets the fuzzy threshold be tuned using their scores.
-- `price_at_decision` is stored so a rejected listing's later price change can be compared.
+- One table, pay-per-request, partition key `id` (UUIDv5 of `sourceId`, e.g. `olx:<olx_id>`).
+- Listing attributes: `sourceId`, `title`, `price`, `currency`, `location`, `url`, `images`, `description`, `status`, `firstSeenAt`, `updatedAt`.
+- `status` values: `new`, `saved` (accepted), `rejected`.
+- GSI `status-firstSeenAt-index` (`status` + `firstSeenAt`) serves the "to review", accepted and rejected views, newest first.
+- GSI `sourceId-index` (`sourceId`) for lookups by source ID. Uniqueness of `sourceId` comes from the derived `id`, not from the index.
 - Photo links are stored, not copies. No seller personal data is stored.
+
+Still open _(proposal, not in the table yet)_: `match_score`, `expired`, `last_seen`, `price_at_decision`, a `filtered` status for listings seen but not passing the criteria (avoids re-fetching descriptions, helps tune the threshold), and a sync metadata item holding `last_success_at`.
 
 ## 5. Sync flow _(proposal)_
 
@@ -93,27 +82,33 @@ Failure rules:
 - Active and at least one photo are exact checks.
 - Threshold is tuned empirically during testing. Starting bias: let more through.
 
-## 7. API _(proposal)_
+## 7. API
 
-| Endpoint                                       | Purpose                                      |
-| ---------------------------------------------- | -------------------------------------------- |
-| `GET /listings?status=new\|accepted\|rejected` | List listings, newest first                  |
-| `POST /listings/{olx_id}/decision`             | Body: `accepted`, `rejected` or `new` (undo) |
-| `GET /sync-status`                             | Returns `last_success_at`                    |
+The Listings API endpoints are defined in `llstingApi.md`: `GET /listings?status=new|saved|rejected`, `PUT /listings/{id}/status` (accept, reject, undo), `GET /listings/counts`, `POST /listings` (sync job), `DELETE /listings/{id}` (admin) and `GET /health`.
 
-Access protection is an open item (section 10).
+Still open _(proposal)_: an endpoint for `last_success_at` (functional requirement 7).
+
+Access: Cognito scopes `listings/read` and `listings/decide` (UI) and `listings/create` (sync job). Until the API validates tokens, the X-API-Key headers from `llstingApi.md` are used.
 
 ## 8. Infrastructure (Terraform)
 
-- One root module with a few files, one environment.
+- One root module (`infra/`), one environment, one state. Each part of the app is a child module:
+
+| Module        | Resources                                                                                          |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| `common`      | DynamoDB `Listings` table and GSI, Cognito user pool, domain and `listings` resource server        |
+| `frontend`    | S3 bucket, CloudFront (OAC, `/api/*` behavior, prefix-stripping function), optional ACM + Route 53, Cognito UI client |
+| `listing_api` | ECR repository, Lightsail container service and deployment, IAM user for DynamoDB, API keys        |
+| `sync_job`    | ECR repository, Lambda (container image), EventBridge rule, output bucket, Cognito M2M client, SSM secret |
+
 - Remote state in an S3 bucket created by hand before the first apply, with S3 native locking.
-- Resources: DynamoDB table and GSI, two Lambdas, Lambda layer for dependencies, EventBridge rule and permission, API Gateway or function URL, SSM parameters, S3 bucket and CloudFront distribution for the UI, IAM roles with least privilege.
-- Terraform does not build code. A build script is needed for:
-  - Python Lambdas: install dependencies for the Lambda runtime and architecture (`rapidfuzz` has native code, so use pip platform flags or Docker), zip, and publish a layer.
-  - React: build, upload to S3, invalidate CloudFront.
+- Terraform does not build code. Scripts in `scripts/` do:
+  - `build-sync-image.ps1` and `build-api-image.ps1`: build and push the container images; the tag goes to Terraform.
+  - `deploy-ui.ps1`: build React, upload to S3, invalidate CloudFront.
 
 ## 9. Risks specific to this architecture
 
+- **Lightsail is always on.** About $7/month (nano), the largest fixed cost. Accepted for no cold starts.
 - **AWS IP ranges.** Lambda requests come from data-center IPs, which OLX may challenge or block more often than a home connection. The spike must run from Lambda, not a laptop. Fallbacks: a small fetcher at home pushing data to AWS, or a fixed IP via NAT Gateway (costs much more than the rest of the stack and does not hide the data-center origin).
 - **JavaScript-rendered pages.** If OLX pages need a headless browser, Lambda packaging gets heavier. The spike will show whether this is needed.
 - **Silent failure.** With no alerting, a broken sync is noticed only by a stale timestamp in the UI.
@@ -121,14 +116,12 @@ Access protection is an open item (section 10).
 ## 10. Open items
 
 - **Spike results** (pending) decide: query scope versus fuzzy search, how to get descriptions, and how listing activity is detected.
-- **Access protection:** shared secret header or a single Cognito user.
-- **Region:** `eu-central-1` suggested.
-- **Python version and dependency packaging approach** (layer versus per-function bundle).
+- **API token checks:** the Listings API and the sync job still use X-API-Key; switching them to Cognito tokens is pending code work.
 - **First-run behavior:** all existing matches go to review, or sort by newest.
 
 ## 11. Next steps
 
 1. Run the spike from Lambda.
 2. Confirm the data model and sync flow against the spike results.
-3. Set up the Terraform skeleton and remote state.
-4. Build the sync Lambda and the adapter, then the API, then the UI.
+3. Apply the Terraform stack (`infra/README.md`) and deploy the images and UI.
+4. Validate Cognito tokens in the Listings API and use client credentials in the sync job; then drop `API_KEY` and `SYNC_API_KEY`.

@@ -1,4 +1,4 @@
-# Container image dependencies. Keep playwright in step with the base image tag in Dockerfile.
+# Container image dependencies. The Dockerfile installs the Chromium build that matches this playwright version.
 playwright==1.64.0
 awslambdaric>=3
 boto3

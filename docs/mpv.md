@@ -1,6 +1,6 @@
 # Toaletka: MVP Requirements and Plan
 
-Date: 2026-10-17 | Status: requirements gathered, technology not chosen, OLX data spike pending
+Date: 2026-10-19 | Status: requirements gathered, technology chosen (see `architecture.md`), OLX data spike pending
 
 ## 1. Goal
 
@@ -106,7 +106,7 @@ A listing matches when it meets all three conditions:
 - **Match quality.** The word "toaletka" alone will also catch modern furniture, while retro and vintage is what she wants. Later: highlighting words like "retro", "vintage", "PRL", "lata 60".
 - **First run** will bring in hundreds of existing listings at once. To decide: all go to review, or sort by newest.
 - **Data and photos.** Store photo links, not copies, and do not collect seller data. Downside: a photo may disappear after the listing expires.
-- **Access.** Without login, anyone who knows the app address can see the list and click decisions. Simple protection (e.g. a password) is needed.
+- **Access.** Without login, anyone who knows the app address can see the list and click decisions. Decided: a single Cognito user, created by hand (no sign-up, no multiple accounts).
 
 ## 9. MVP success criterion (proposal)
 
@@ -117,4 +117,4 @@ After a week, most listings on the list are sensible (few rejections for "this i
 1. **Spike (separate task, not started):** check what the OLX search page returns: what is in the results list versus only on the listing page, how pagination works, how an inactive listing is marked, plus robots.txt.
 2. Based on the spike, resolve points 1 to 3 in section 8.
 3. Sketch the data model and the sync flow.
-4. Choose the technology (last).
+4. ~~Choose the technology~~: done, see `architecture.md`.

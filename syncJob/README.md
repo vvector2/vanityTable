@@ -26,14 +26,15 @@ curl -X POST http://localhost:9000/2015-03-31/functions/function/invocations -d 
 
 ## Deploy to AWS
 
-From the repository root, with Docker, Terraform >= 1.10 and the AWS CLI. The state bucket is created by hand once.
+From the repository root, with Docker, Terraform >= 1.10 and the AWS CLI. Full stack setup: `infra/README.md`.
 
 ```
-terraform -chdir=infra init -backend-config="bucket=<state-bucket>"
-terraform -chdir=infra apply -target="aws_ecr_repository.sync" -var sync_image_tag=none   # first time only: the repo must exist before a push
-./scripts/build-sync-image.ps1 -Push                              # prints the image tag
-terraform -chdir=infra apply -var sync_image_tag=<tag>
+./scripts/build-sync-image.ps1 -Push         # needs the ECR repo from the first apply in infra/README.md; prints the image tag
+# set sync_image_tag = "<tag>" in infra/terraform.tfvars (api_image_tag must be set there too)
+terraform -chdir=infra apply
 ```
+
+`LISTING_API_URL` is set by Terraform from the `listing_api` module, and stays empty (upload off) until the API has an image. The API key is not in the Lambda configuration: Terraform stores it in SSM and passes the parameter name in `LISTING_API_KEY_PARAMETER`.
 
 Invoke by hand and read the result:
 
@@ -68,6 +69,7 @@ After the fetch, every listing is sent to `POST /listings` of the Listings API (
 | -------------------------------------- | ------------------ |
 | `LISTING_API_URL`                      | none (upload off)  |
 | `LISTING_API_KEY` (the API's `SYNC_API_KEY`) | empty        |
+| `LISTING_API_KEY_PARAMETER` (SSM SecureString, used when `LISTING_API_KEY` is empty) | none |
 | `LISTING_API_TIMEOUT_SECONDS`          | `10`               |
 | `LISTING_API_MAX_ATTEMPTS`             | `3`                |
 | `LISTING_API_MAX_CONSECUTIVE_FAILURES` | `10`               |
