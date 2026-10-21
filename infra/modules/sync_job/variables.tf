@@ -2,6 +2,11 @@ variable "name" {
   type = string
 }
 
+variable "function_name" {
+  description = "Lambda name; the Listings API invokes it by this name for manual scans."
+  type        = string
+}
+
 variable "image_tag" {
   description = "Tag of the sync image in ECR. Empty skips the Lambda."
   type        = string

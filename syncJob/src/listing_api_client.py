@@ -6,6 +6,8 @@
   that website, e.g. "olx:123". The API generates its own internal `id`.
 - `201` the listing was created, `409` it already existed and was left unchanged
 
+`PUT /scan-job/{id}` (same key) reports a run's status: `running`, `succeeded` or `failed`.
+
 Resilience comes from libraries:
 - tenacity retries transient failures with exponential backoff (safe, the create is idempotent)
 - pybreaker opens the circuit after `breaker_fail_max` failed listings in a row; while it is
@@ -15,6 +17,7 @@ Resilience comes from libraries:
 import json
 import logging
 import urllib.error
+import urllib.parse
 import urllib.request
 from enum import StrEnum
 from typing import Any
@@ -88,7 +91,8 @@ class ListingApiClient:
         max_attempts: int = 3,
         breaker_fail_max: int = 10,
     ) -> None:
-        self._url = base_url.rstrip("/") + "/listings"
+        self._base_url = base_url.rstrip("/")
+        self._url = self._base_url + "/listings"
         self._api_key = api_key
         self._timeout = timeout
         self._retrying = Retrying(
@@ -148,6 +152,40 @@ class ListingApiClient:
         if status == 201:
             return CreateOutcome.CREATED
         raise ListingApiError(f"{key}: unexpected HTTP {status}", status=status)
+
+
+    def report_scan_job(self, job_id: str, status: str, error: str | None = None) -> None:
+        """Records a run's status. Retried like a create, but outside the listings circuit breaker.
+
+        Raises ListingApiError when the report could not be sent.
+        """
+        body = {"status": status, "error": error[:1000] if error else None}
+        self._retrying(self._put_scan_job, job_id, body)
+
+    def _put_scan_job(self, job_id: str, body: dict[str, Any]) -> None:
+        request = urllib.request.Request(
+            f"{self._base_url}/scan-job/{urllib.parse.quote(job_id, safe='')}",
+            data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+            method="PUT",
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+                "X-API-Key": self._api_key,
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self._timeout):
+                return
+        except urllib.error.HTTPError as error:
+            raise ListingApiError(
+                f"scan job {job_id}: HTTP {error.code}: {read_error_body(error)}",
+                status=error.code,
+                transient=error.code in TRANSIENT_STATUSES,
+            ) from error
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+            reason = getattr(error, "reason", error)
+            raise ListingApiError(f"scan job {job_id}: request failed: {reason}", transient=True) from error
 
 
 def read_error_body(error: urllib.error.HTTPError, limit: int = 500) -> str:

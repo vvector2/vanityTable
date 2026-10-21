@@ -24,6 +24,19 @@ variable "listings_table_arn" {
   type = string
 }
 
+variable "scan_jobs_table_name" {
+  type = string
+}
+
+variable "scan_jobs_table_arn" {
+  type = string
+}
+
+variable "sync_function_name" {
+  description = "Sync Lambda that POST /scan-job invokes."
+  type        = string
+}
+
 variable "cognito_issuer" {
   type = string
 }

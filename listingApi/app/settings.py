@@ -14,6 +14,9 @@ class Settings:
     sync_api_key: str | None
     admin_api_key: str | None
     allowed_origins: list[str]
+    scan_jobs_table_name: str
+    # Sync Lambda that POST /scan-job invokes. Unset: POST /scan-job only records the job.
+    scan_function_name: str | None
 
 
 def load_settings() -> Settings:
@@ -28,4 +31,6 @@ def load_settings() -> Settings:
         sync_api_key=os.environ.get("SYNC_API_KEY") or None,
         admin_api_key=os.environ.get("ADMIN_API_KEY") or None,
         allowed_origins=[o.strip() for o in origins.split(",") if o.strip()],
+        scan_jobs_table_name=os.environ.get("SCAN_JOBS_TABLE_NAME", "ScanJobs"),
+        scan_function_name=os.environ.get("SCAN_FUNCTION_NAME") or None,
     )

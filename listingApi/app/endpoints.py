@@ -3,29 +3,39 @@
 import math
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Path, Query, Response
 
 from app.api_utils import (
     ApiError,
     Repository,
+    ScanJobs,
+    ScanTriggerDep,
     require_admin_api_key,
     require_api_key,
     require_sync_api_key,
 )
 from app.models import (
     CreateListingRequest,
+    LatestScanDto,
     ListingCountsDto,
     ListingDto,
     ListingsPageDto,
     ListingStatus,
+    ReportScanJobRequest,
+    ScanJobDto,
+    ScanJobStatus,
     UpdateListingStatusRequest,
 )
 from app.repository import ListingAlreadyExists, ListingNotFound
+from app.scan_jobs import ScanJobNotFound
+from app.scan_trigger import ScanTriggerFailed
 
 health_router = APIRouter()
 listings_router = APIRouter(prefix="/listings", dependencies=[Depends(require_api_key)])
 # Not used by the UI, so these take their own keys instead of the UI's API key.
 listings_write_router = APIRouter(prefix="/listings")
+# GET and POST are used by the UI; PUT by the sync job, so it takes the sync key.
+scan_job_router = APIRouter(prefix="/scan-job")
 
 
 @health_router.get("/health")
@@ -87,3 +97,51 @@ def delete_listing(listing_id: str, repository: Repository) -> Response:
     except ListingNotFound:
         raise ApiError(404, "NOT_FOUND", f"Listing {listing_id} not found") from None
     return Response(status_code=204)
+
+
+@scan_job_router.post(
+    "", response_model=ScanJobDto, status_code=201, dependencies=[Depends(require_api_key)]
+)
+def start_scan_job(scan_jobs: ScanJobs, trigger: ScanTriggerDep, response: Response) -> ScanJobDto:
+    """Starts a scan. While one is active it is returned instead (200), so OLX sees one run at a time."""
+    active = scan_jobs.find_active()
+    if active:
+        response.status_code = 200
+        return active
+    job = scan_jobs.create()
+    try:
+        trigger.request_scan(job.id)
+    except ScanTriggerFailed as error:
+        scan_jobs.report(job.id, ScanJobStatus.FAILED, f"Could not start the scan: {error}")
+        raise ApiError(502, "SCAN_NOT_STARTED", "Could not start the scan") from error
+    return job
+
+
+# Declared before /{job_id}, so "latest" is not read as a job id.
+@scan_job_router.get("/latest", response_model=LatestScanDto, dependencies=[Depends(require_api_key)])
+def latest_scan(scan_jobs: ScanJobs) -> LatestScanDto:
+    succeeded = scan_jobs.latest_succeeded()
+    return LatestScanDto(
+        last_success_at=succeeded.finished_at if succeeded else None,
+        active_job=scan_jobs.find_active(),
+    )
+
+
+@scan_job_router.get("/{job_id}", response_model=ScanJobDto, dependencies=[Depends(require_api_key)])
+def get_scan_job(job_id: str, scan_jobs: ScanJobs) -> ScanJobDto:
+    try:
+        return scan_jobs.get(job_id)
+    except ScanJobNotFound:
+        raise ApiError(404, "NOT_FOUND", f"Scan job {job_id} not found") from None
+
+
+@scan_job_router.put(
+    "/{job_id}", response_model=ScanJobDto, dependencies=[Depends(require_sync_api_key)]
+)
+def report_scan_job(
+    job_id: Annotated[str, Path(min_length=1, max_length=100)],
+    body: ReportScanJobRequest,
+    scan_jobs: ScanJobs,
+) -> ScanJobDto:
+    """Status from the sync job. Unknown ids are created: scheduled runs report under their own id."""
+    return scan_jobs.report(job_id, body.status, body.error)
