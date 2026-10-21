@@ -1,6 +1,12 @@
 # One root module and one state; each part of the app is a child module.
 # See docs/architecture.md, section 8.
 
+locals {
+  # Named here, not read from module.sync_job: sync_job already depends on listing_api,
+  # and listing_api needs the name to invoke the Lambda for manual scans.
+  sync_function_name = "${var.name}-sync"
+}
+
 module "common" {
   source = "./modules/common"
 
@@ -16,6 +22,9 @@ module "listing_api" {
   image_tag             = var.api_image_tag
   listings_table_name   = module.common.listings_table_name
   listings_table_arn    = module.common.listings_table_arn
+  scan_jobs_table_name  = module.common.scan_jobs_table_name
+  scan_jobs_table_arn   = module.common.scan_jobs_table_arn
+  sync_function_name    = local.sync_function_name
   cognito_issuer        = module.common.cognito_issuer
   listings_scope_prefix = module.common.listings_scope_prefix
 }
@@ -40,6 +49,7 @@ module "sync_job" {
   source = "./modules/sync_job"
 
   name             = var.name
+  function_name    = local.sync_function_name
   image_tag        = var.sync_image_tag
   schedule_enabled = var.sync_schedule_enabled
   olx_query        = var.olx_query

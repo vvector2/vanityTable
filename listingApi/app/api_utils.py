@@ -1,4 +1,4 @@
-"""Shared API pieces: error type and handlers, API key check, repository dependency."""
+"""Shared API pieces: error type and handlers, API key check, repository dependencies."""
 
 import secrets
 from typing import Annotated
@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse
 
 from app.models import ErrorDto
 from app.repository import ListingRepository
+from app.scan_jobs import ScanJobRepository
+from app.scan_trigger import ScanTrigger
 
 
 class ApiError(Exception):
@@ -57,3 +59,15 @@ def get_repository(request: Request) -> ListingRepository:
 
 
 Repository = Annotated[ListingRepository, Depends(get_repository)]
+
+
+def get_scan_jobs(request: Request) -> ScanJobRepository:
+    return request.app.state.scan_jobs
+
+
+def get_scan_trigger(request: Request) -> ScanTrigger:
+    return request.app.state.scan_trigger
+
+
+ScanJobs = Annotated[ScanJobRepository, Depends(get_scan_jobs)]
+ScanTriggerDep = Annotated[ScanTrigger, Depends(get_scan_trigger)]
