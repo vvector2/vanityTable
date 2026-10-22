@@ -1,6 +1,7 @@
 import ErrorBanner from "./components/ErrorBanner";
 import Header from "./components/Header";
 import ListingGrid from "./components/ListingGrid";
+import ScanBanner from "./components/ScanBanner";
 import ReviewView from "./components/ReviewView";
 import StatusTabs from "./components/StatusTabs";
 import { useListings } from "./state/ListingsContext";
@@ -32,6 +33,7 @@ export default function App() {
   return (
     <div className="app">
       <Header />
+      <ScanBanner />
       <main className="app-main">
         <StatusTabs />
         <ErrorBanner />

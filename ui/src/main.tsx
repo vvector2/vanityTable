@@ -4,6 +4,7 @@ import "@picocss/pico/css/pico.min.css";
 import App from "./App";
 import { ensureSignedIn } from "./auth";
 import { ListingsProvider } from "./state/ListingsContext";
+import { ScanProvider } from "./state/ScanContext";
 import "./index.css";
 
 const root = createRoot(document.getElementById("root")!);
@@ -15,7 +16,9 @@ ensureSignedIn()
     root.render(
       <StrictMode>
         <ListingsProvider>
-          <App />
+          <ScanProvider>
+            <App />
+          </ScanProvider>
         </ListingsProvider>
       </StrictMode>,
     );
