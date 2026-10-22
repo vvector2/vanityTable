@@ -18,7 +18,6 @@ interface ListingsContextValue {
   // Listings of the current tab, newest first.
   items: Listing[];
   counts: Record<ListingStatus, number> | null;
-  lastSyncAt: string | null;
   loading: boolean;
   // Failure to load the current tab; the view shows it instead of the list.
   loadError: string | null;
@@ -119,8 +118,6 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     return {
       items,
       counts,
-      // No sync-status endpoint in the API yet.
-      lastSyncAt: null,
       loading,
       loadError,
       actionError,
