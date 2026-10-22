@@ -37,9 +37,8 @@ output "cognito_admin_client_id" {
   value = module.common.cognito_admin_client_id
 }
 
-output "cognito_admin_client_secret" {
-  value     = module.common.cognito_admin_client_secret
-  sensitive = true
+output "cognito_admin_client_secret_parameter" {
+  value = module.common.cognito_admin_client_secret_parameter
 }
 
 # Listings API

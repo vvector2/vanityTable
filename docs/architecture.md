@@ -38,7 +38,7 @@ EventBridge (rate 30 min) --> Sync Lambda ----------------------+
 | Listings API (Lightsail container)     | FastAPI. Lists listings by status, records decisions, accepts listings from the sync job. See `llstingApi.md` |
 | DynamoDB                               | Listings, decisions, sync metadata                                                                     |
 | Cognito user pool                      | UI sign-in (code flow with PKCE), the sync job's client credentials (scope `listings/create`) and the admin client (scope `listings/admin`) |
-| SSM Parameter Store                    | Sync job's Cognito client secret; later fuzzy threshold, exceptions list, search settings              |
+| SSM Parameter Store                    | Cognito client secrets of the sync job and the admin client; later fuzzy threshold, exceptions list, search settings |
 | S3 + CloudFront (+ Route 53)           | Hosts the static React build; `/api/*` goes to the Listings API on the same origin                     |
 
 ## 3. Normalized listing (adapter contract) _(proposal)_
@@ -98,7 +98,7 @@ Access: Cognito access tokens (`Authorization: Bearer`), validated by the API. S
 
 | Module        | Resources                                                                                          |
 | ------------- | -------------------------------------------------------------------------------------------------- |
-| `common`      | DynamoDB `Listings` table and GSI, Cognito user pool, domain and `listings` resource server        |
+| `common`      | DynamoDB `Listings` table and GSI, Cognito user pool, domain and `listings` resource server, admin M2M client and its SSM secret |
 | `frontend`    | S3 bucket, CloudFront (OAC, `/api/*` behavior, prefix-stripping function), optional ACM + Route 53, Cognito UI client |
 | `listing_api` | ECR repository, Lightsail container service and deployment, IAM user for DynamoDB, API keys        |
 | `sync_job`    | ECR repository, Lambda (container image), EventBridge rule, Cognito M2M client, SSM secret |

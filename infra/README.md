@@ -90,5 +90,5 @@ Destroys everything in the state, including the Listings table (all decisions) a
 
 - The state holds secrets (the Lightsail IAM user's access key, the Cognito client secrets). Keep the state bucket private.
 - The UI calls the API on its own origin at `/api/*`; a CloudFront function strips the `/api` prefix.
-- All API calls use Cognito access tokens: the UI signs in (code flow with PKCE), the sync job and the admin client use client credentials. `scripts/local/admin-token.ps1 -Env <env>` prints an admin token for `DELETE /listings/{id}`.
+- All API calls use Cognito access tokens: the UI signs in (code flow with PKCE), the sync job and the admin client use client credentials. `scripts/local/admin-token.ps1 -Env <env>` prints an admin token for `DELETE /listings/{id}`; it reads the admin client secret from SSM (`cognito_admin_client_secret_parameter`), not from a Terraform output.
 - Local sign-in (`launch.cmd`): `dev_callback_urls` in `environments/dev.tfvars` allows `http://localhost:5173/`.

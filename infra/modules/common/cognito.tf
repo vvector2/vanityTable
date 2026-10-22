@@ -88,3 +88,10 @@ resource "aws_cognito_user_pool_client" "admin" {
     access_token = "minutes"
   }
 }
+
+# Read by admin-token.ps1, so the secret is not a Terraform output.
+resource "aws_ssm_parameter" "admin_client_secret" {
+  name  = "/${var.name}/admin/cognito-client-secret"
+  type  = "SecureString"
+  value = aws_cognito_user_pool_client.admin.client_secret
+}

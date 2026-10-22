@@ -30,6 +30,6 @@ function Get-CognitoSettings([ValidateSet("dev", "prod")][string]$Env = "dev") {
         SyncClientId               = Value "sync_cognito_client_id"
         SyncClientSecretParameter  = Value "sync_cognito_client_secret_parameter"
         AdminClientId              = Value "cognito_admin_client_id"
-        AdminClientSecret          = Value "cognito_admin_client_secret"
+        AdminClientSecretParameter = Value "cognito_admin_client_secret_parameter"
     }
 }

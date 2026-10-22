@@ -36,9 +36,9 @@ output "cognito_admin_client_id" {
   value = aws_cognito_user_pool_client.admin.id
 }
 
-output "cognito_admin_client_secret" {
-  value     = aws_cognito_user_pool_client.admin.client_secret
-  sensitive = true
+output "cognito_admin_client_secret_parameter" {
+  description = "SSM SecureString holding the admin client's secret."
+  value       = aws_ssm_parameter.admin_client_secret.name
 }
 
 output "scan_jobs_table_name" {
