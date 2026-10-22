@@ -12,7 +12,7 @@ data "aws_cloudfront_cache_policy" "caching_disabled" {
   name = "Managed-CachingDisabled"
 }
 
-# Forwards query strings and headers (X-API-Key, Authorization) but lets CloudFront
+# Forwards query strings and headers (Authorization) but lets CloudFront
 # set Host to the origin name, which Lightsail needs to route the request.
 data "aws_cloudfront_origin_request_policy" "all_viewer_except_host" {
   name = "Managed-AllViewerExceptHostHeader"

@@ -22,6 +22,7 @@ import os
 import uuid
 from typing import Any
 
+from cognito_token import TokenProvider
 from listing_api_client import ListingApiClient
 from listing_upload import upload_listings
 from olx_browser_bot import scrape
@@ -45,18 +46,28 @@ def read_settings(event: dict[str, Any]) -> tuple[str, float, int | None]:
     )
 
 
-def listing_api_key() -> str:
-    """X-API-Key for the Listings API: LISTING_API_KEY, or on AWS the SSM parameter named by LISTING_API_KEY_PARAMETER."""
-    key = os.environ.get("LISTING_API_KEY")
-    if key:
-        return key
-    parameter = os.environ.get("LISTING_API_KEY_PARAMETER")
+def cognito_client_secret() -> str:
+    """Sync client's secret: COGNITO_CLIENT_SECRET, or on AWS the SSM parameter named by COGNITO_CLIENT_SECRET_PARAMETER."""
+    secret = os.environ.get("COGNITO_CLIENT_SECRET")
+    if secret:
+        return secret
+    parameter = os.environ.get("COGNITO_CLIENT_SECRET_PARAMETER")
     if not parameter:
-        return ""
+        raise RuntimeError("COGNITO_CLIENT_SECRET or COGNITO_CLIENT_SECRET_PARAMETER must be set")
     import boto3
 
     response = boto3.client("ssm").get_parameter(Name=parameter, WithDecryption=True)
     return response["Parameter"]["Value"]
+
+
+def token_provider() -> TokenProvider:
+    """Cognito client credentials for the Listings API (scope listings/create)."""
+    return TokenProvider(
+        os.environ["COGNITO_TOKEN_URL"],
+        os.environ["COGNITO_CLIENT_ID"],
+        cognito_client_secret(),
+        os.environ.get("COGNITO_SCOPE", "listings/create"),
+    )
 
 
 def api_client() -> ListingApiClient | None:
@@ -67,7 +78,7 @@ def api_client() -> ListingApiClient | None:
         return None
     return ListingApiClient(
         base_url,
-        listing_api_key(),
+        token_provider(),
         timeout=float(os.environ.get("LISTING_API_TIMEOUT_SECONDS", 10)),
         max_attempts=int(os.environ.get("LISTING_API_MAX_ATTEMPTS", 3)),
         breaker_fail_max=int(os.environ.get("LISTING_API_MAX_CONSECUTIVE_FAILURES", 10)),

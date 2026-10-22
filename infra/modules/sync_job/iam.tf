@@ -22,7 +22,7 @@ data "aws_iam_policy_document" "sync" {
   # SecureString with the AWS managed key: its key policy already allows decrypt via SSM.
   statement {
     actions   = ["ssm:GetParameter"]
-    resources = [aws_ssm_parameter.sync_client_secret.arn, aws_ssm_parameter.listing_api_key.arn]
+    resources = [aws_ssm_parameter.sync_client_secret.arn]
   }
 }
 

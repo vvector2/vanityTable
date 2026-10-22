@@ -28,8 +28,17 @@ output "cognito_token_url" {
 }
 
 output "listings_scope_prefix" {
-  description = "Resource server identifier; scopes are <prefix>/read, /decide and /create."
+  description = "Resource server identifier; scopes are <prefix>/read, /decide, /create and /admin."
   value       = aws_cognito_resource_server.listings.identifier
+}
+
+output "cognito_admin_client_id" {
+  value = aws_cognito_user_pool_client.admin.id
+}
+
+output "cognito_admin_client_secret" {
+  value     = aws_cognito_user_pool_client.admin.client_secret
+  sensitive = true
 }
 
 output "scan_jobs_table_name" {

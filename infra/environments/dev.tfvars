@@ -8,4 +8,5 @@ name           = "toaletka"
 sync_schedule_enabled = false
 olx_query             = "toaletki"
 
-# dev_callback_urls = ["http://localhost:5173/"]   # only while testing sign-in locally
+# Sign-in from the local UI (launch.cmd).
+dev_callback_urls = ["http://localhost:5173/"]

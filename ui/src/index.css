@@ -105,6 +105,23 @@ button {
   color: var(--muted);
 }
 
+.header-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btn-sign-out {
+  width: auto;
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
 .sync-dot {
   width: 8px;
   height: 8px;

@@ -20,6 +20,28 @@ output "cognito_domain_url" {
   value = module.common.cognito_domain_url
 }
 
+output "cognito_issuer" {
+  description = "Token issuer: the UI's OIDC authority and the API's COGNITO_ISSUER."
+  value       = module.common.cognito_issuer
+}
+
+output "cognito_token_url" {
+  value = module.common.cognito_token_url
+}
+
+output "listings_scope_prefix" {
+  value = module.common.listings_scope_prefix
+}
+
+output "cognito_admin_client_id" {
+  value = module.common.cognito_admin_client_id
+}
+
+output "cognito_admin_client_secret" {
+  value     = module.common.cognito_admin_client_secret
+  sensitive = true
+}
+
 # Listings API
 
 output "api_repository_url" {
@@ -31,16 +53,6 @@ output "api_url" {
   value       = module.listing_api.url
 }
 
-output "api_key" {
-  description = "X-API-Key for the UI (VITE_API_KEY). Used until the API checks Cognito tokens."
-  value       = module.listing_api.api_key
-  sensitive   = true
-}
-
-output "admin_api_key" {
-  value     = module.listing_api.admin_api_key
-  sensitive = true
-}
 
 # Sync job
 
@@ -50,6 +62,14 @@ output "sync_repository_url" {
 
 output "sync_function_name" {
   value = module.sync_job.function_name
+}
+
+output "sync_cognito_client_id" {
+  value = module.sync_job.cognito_client_id
+}
+
+output "sync_cognito_client_secret_parameter" {
+  value = module.sync_job.cognito_client_secret_parameter
 }
 
 # Common

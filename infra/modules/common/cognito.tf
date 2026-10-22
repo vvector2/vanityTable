@@ -41,7 +41,7 @@ resource "aws_cognito_user_pool_domain" "main" {
 }
 
 # The Listings API as an OAuth resource server. Scopes map to docs/llstingApi.md, section Auth:
-# read and decide for the UI, create for the sync job. Admin delete stays on ADMIN_API_KEY.
+# read and decide for the UI, create for the sync job, admin for deleting listings.
 resource "aws_cognito_resource_server" "listings" {
   user_pool_id = aws_cognito_user_pool.main.id
   identifier   = "listings"
@@ -60,5 +60,31 @@ resource "aws_cognito_resource_server" "listings" {
   scope {
     scope_name        = "create"
     scope_description = "Add listings found by the sync job"
+  }
+
+  scope {
+    scope_name        = "admin"
+    scope_description = "Delete listings"
+  }
+}
+
+# Machine client for admin calls (DELETE /listings/{id}): client credentials, admin scope only.
+# Get a token with scripts/admin-token.ps1.
+resource "aws_cognito_user_pool_client" "admin" {
+  name         = "${var.name}-admin"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  generate_secret                      = true
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_flows                  = ["client_credentials"]
+  allowed_oauth_scopes                 = ["${aws_cognito_resource_server.listings.identifier}/admin"]
+  supported_identity_providers         = ["COGNITO"]
+  explicit_auth_flows                  = ["ALLOW_REFRESH_TOKEN_AUTH"]
+  prevent_user_existence_errors        = "ENABLED"
+
+  access_token_validity = 60
+
+  token_validity_units {
+    access_token = "minutes"
   }
 }

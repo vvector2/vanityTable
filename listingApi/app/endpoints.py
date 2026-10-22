@@ -10,10 +10,8 @@ from app.api_utils import (
     Repository,
     ScanJobs,
     ScanTriggerDep,
-    require_admin_api_key,
-    require_api_key,
-    require_sync_api_key,
 )
+from app.auth import require_scope
 from app.models import (
     CreateListingRequest,
     LatestScanDto,
@@ -31,10 +29,17 @@ from app.scan_jobs import ScanJobNotFound
 from app.scan_trigger import ScanTriggerFailed
 
 health_router = APIRouter()
-listings_router = APIRouter(prefix="/listings", dependencies=[Depends(require_api_key)])
-# Not used by the UI, so these take their own keys instead of the UI's API key.
+# Scopes per caller (docs/llstingApi.md, section Auth): the UI reads and decides,
+# the sync job creates listings and reports scans, the admin client deletes.
+read = Depends(require_scope("read"))
+decide = Depends(require_scope("decide"))
+create = Depends(require_scope("create"))
+admin = Depends(require_scope("admin"))
+
+listings_router = APIRouter(prefix="/listings")
+# Not used by the UI, so these take the sync job's and the admin's scopes.
 listings_write_router = APIRouter(prefix="/listings")
-# GET and POST are used by the UI; PUT by the sync job, so it takes the sync key.
+# GET and POST are used by the UI; PUT by the sync job.
 scan_job_router = APIRouter(prefix="/scan-job")
 
 
@@ -43,7 +48,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@listings_router.get("", response_model=ListingsPageDto)
+@listings_router.get("", response_model=ListingsPageDto, dependencies=[read])
 def list_listings(
     repository: Repository,
     status: ListingStatus,
@@ -60,12 +65,12 @@ def list_listings(
     )
 
 
-@listings_router.get("/counts", response_model=ListingCountsDto)
+@listings_router.get("/counts", response_model=ListingCountsDto, dependencies=[read])
 def listing_counts(repository: Repository) -> ListingCountsDto:
     return ListingCountsDto(**{status.value: repository.count(status) for status in ListingStatus})
 
 
-@listings_router.put("/{listing_id}/status", response_model=ListingDto)
+@listings_router.put("/{listing_id}/status", response_model=ListingDto, dependencies=[decide])
 def update_listing_status(
     listing_id: str, body: UpdateListingStatusRequest, repository: Repository
 ) -> ListingDto:
@@ -79,7 +84,7 @@ def update_listing_status(
     "",
     response_model=ListingDto,
     status_code=201,
-    dependencies=[Depends(require_sync_api_key)],
+    dependencies=[create],
 )
 def create_listing(body: CreateListingRequest, repository: Repository) -> ListingDto:
     try:
@@ -89,7 +94,7 @@ def create_listing(body: CreateListingRequest, repository: Repository) -> Listin
 
 
 @listings_write_router.delete(
-    "/{listing_id}", status_code=204, dependencies=[Depends(require_admin_api_key)]
+    "/{listing_id}", status_code=204, dependencies=[admin]
 )
 def delete_listing(listing_id: str, repository: Repository) -> Response:
     try:
@@ -100,7 +105,7 @@ def delete_listing(listing_id: str, repository: Repository) -> Response:
 
 
 @scan_job_router.post(
-    "", response_model=ScanJobDto, status_code=201, dependencies=[Depends(require_api_key)]
+    "", response_model=ScanJobDto, status_code=201, dependencies=[decide]
 )
 def start_scan_job(scan_jobs: ScanJobs, trigger: ScanTriggerDep, response: Response) -> ScanJobDto:
     """Starts a scan. While one is active it is returned instead (200), so OLX sees one run at a time."""
@@ -118,7 +123,7 @@ def start_scan_job(scan_jobs: ScanJobs, trigger: ScanTriggerDep, response: Respo
 
 
 # Declared before /{job_id}, so "latest" is not read as a job id.
-@scan_job_router.get("/latest", response_model=LatestScanDto, dependencies=[Depends(require_api_key)])
+@scan_job_router.get("/latest", response_model=LatestScanDto, dependencies=[read])
 def latest_scan(scan_jobs: ScanJobs) -> LatestScanDto:
     succeeded = scan_jobs.latest_succeeded()
     return LatestScanDto(
@@ -127,7 +132,7 @@ def latest_scan(scan_jobs: ScanJobs) -> LatestScanDto:
     )
 
 
-@scan_job_router.get("/{job_id}", response_model=ScanJobDto, dependencies=[Depends(require_api_key)])
+@scan_job_router.get("/{job_id}", response_model=ScanJobDto, dependencies=[read])
 def get_scan_job(job_id: str, scan_jobs: ScanJobs) -> ScanJobDto:
     try:
         return scan_jobs.get(job_id)
@@ -136,7 +141,7 @@ def get_scan_job(job_id: str, scan_jobs: ScanJobs) -> ScanJobDto:
 
 
 @scan_job_router.put(
-    "/{job_id}", response_model=ScanJobDto, dependencies=[Depends(require_sync_api_key)]
+    "/{job_id}", response_model=ScanJobDto, dependencies=[create]
 )
 def report_scan_job(
     job_id: Annotated[str, Path(min_length=1, max_length=100)],

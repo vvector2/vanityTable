@@ -17,15 +17,18 @@ Not in MVP: `GET /listings/{id}`, price filter, failure alerting.
 
 Errors: `400` invalid params/body, `404` unknown listing id on PUT or DELETE, `409` `sourceId` already exists on POST. Body: `{ "error": "VALIDATION_ERROR", "message": "..." }`.
 
-Auth (assumption): `X-API-Key` header. To be confirmed (single user vs multiple users).
+## Auth
 
-| Endpoints                 | Key setting     | Used by  |
-| ------------------------- | --------------- | -------- |
-| GET and PUT `/listings*`  | `API_KEY`       | UI       |
-| POST `/listings`          | `SYNC_API_KEY`  | Sync job |
-| DELETE `/listings/{id}`   | `ADMIN_API_KEY` | Admins   |
+OAuth 2.0 with the Cognito user pool. Every endpoint except `/health` needs `Authorization: Bearer <access token>`. The API checks the signature (pool JWKS), expiry, issuer (`COGNITO_ISSUER`), `token_use=access` and the endpoint's scope.
 
-The UI key lives in the browser, so it cannot create or delete. If `SYNC_API_KEY` or `ADMIN_API_KEY` is unset, that endpoint returns `401` for every request.
+| Endpoints                                                       | Scope             | Used by (flow)                         |
+| --------------------------------------------------------------- | ----------------- | -------------------------------------- |
+| GET `/listings`, `/listings/counts`, `/scan-job/latest`, `/scan-job/{id}` | `listings/read`   | UI (code flow with PKCE)     |
+| PUT `/listings/{id}/status`, POST `/scan-job`                   | `listings/decide` | UI (code flow with PKCE)               |
+| POST `/listings`, PUT `/scan-job/{id}`                          | `listings/create` | Sync job (client credentials)          |
+| DELETE `/listings/{id}`                                         | `listings/admin`  | Admin client (client credentials)      |
+
+No token or an invalid one: `401 UNAUTHORIZED`. Valid token without the scope: `403 FORBIDDEN`. The UI client cannot get `create` or `admin`.
 
 ## DTOs
 
@@ -75,7 +78,7 @@ Notes:
 | HTTPS            | Included default endpoint; custom domain optional (needs validated certificate)  |
 | Scaling          | Manual only (power and scale, up to 20 nodes); no auto-scaling, no scale to zero |
 
-Environment variables: `TABLE_NAME`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `API_KEY`, `SYNC_API_KEY`, `ADMIN_API_KEY`, `ALLOWED_ORIGINS`.
+Environment variables: `TABLE_NAME`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `COGNITO_ISSUER`, `COGNITO_SCOPE_PREFIX`, `ALLOWED_ORIGINS`, `SCAN_JOBS_TABLE_NAME`, `SCAN_FUNCTION_NAME`.
 
 Lightsail containers have no task IAM role (not confirmed in docs), so use a dedicated IAM user limited to `dynamodb:Query`, `GetItem`, `UpdateItem`, `PutItem`, `DeleteItem` on the `Listings` table and its GSI. Pass the keys as sensitive Terraform variables.
 

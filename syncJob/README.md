@@ -39,7 +39,7 @@ Or by hand, with `infra/` initialized for the environment (`deploy.sh` does that
 terraform -chdir=infra apply -var-file=environments/dev.tfvars -var sync_image_tag=<tag> -var api_image_tag=<running api tag>
 ```
 
-`LISTING_API_URL` is set by Terraform from the `listing_api` module, and stays empty (upload off) until the API has an image. The API key is not in the Lambda configuration: Terraform stores it in SSM and passes the parameter name in `LISTING_API_KEY_PARAMETER`.
+`LISTING_API_URL` is set by Terraform from the `listing_api` module, and stays empty (upload off) until the API has an image. The Lambda authenticates with a Cognito access token (client credentials, scope `listings/create`). The client secret is not in the Lambda configuration: Terraform stores it in SSM and passes the parameter name in `COGNITO_CLIENT_SECRET_PARAMETER`.
 
 Invoke by hand; the result (pages fetched, listing count, upload summary) is in `out.json`:
 
@@ -70,8 +70,11 @@ After the fetch, every listing is sent to `POST /listings` of the Listings API (
 | Env variable                           | Default            |
 | -------------------------------------- | ------------------ |
 | `LISTING_API_URL`                      | none (upload off)  |
-| `LISTING_API_KEY` (the API's `SYNC_API_KEY`) | empty        |
-| `LISTING_API_KEY_PARAMETER` (SSM SecureString, used when `LISTING_API_KEY` is empty) | none |
+| `COGNITO_TOKEN_URL` (`<Cognito domain>/oauth2/token`) | required with an API URL |
+| `COGNITO_CLIENT_ID` (sync machine client) | required with an API URL |
+| `COGNITO_CLIENT_SECRET`                | empty              |
+| `COGNITO_CLIENT_SECRET_PARAMETER` (SSM SecureString, used when `COGNITO_CLIENT_SECRET` is empty) | none |
+| `COGNITO_SCOPE`                        | `listings/create`  |
 | `LISTING_API_TIMEOUT_SECONDS`          | `10`               |
 | `LISTING_API_MAX_ATTEMPTS`             | `3`                |
 | `LISTING_API_MAX_CONSECUTIVE_FAILURES` | `10`               |

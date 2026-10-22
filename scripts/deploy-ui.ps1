@@ -16,7 +16,9 @@ $distribution = Get-TerraformOutput "ui_distribution_id"
 # CloudFront forwards /api/* to the Listings API, so the UI calls its own origin.
 # Process variables take precedence over ui/.env* files.
 $env:VITE_API_URL = "/api"
-$env:VITE_API_KEY = Get-TerraformOutput "api_key"
+$env:VITE_COGNITO_AUTHORITY = Get-TerraformOutput "cognito_issuer"
+$env:VITE_COGNITO_CLIENT_ID = Get-TerraformOutput "cognito_ui_client_id"
+$env:VITE_COGNITO_DOMAIN = Get-TerraformOutput "cognito_domain_url"
 try {
     npm --prefix "$root/ui" ci
     if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
@@ -24,7 +26,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "npm run build failed" }
 }
 finally {
-    Remove-Item Env:VITE_API_URL, Env:VITE_API_KEY -ErrorAction SilentlyContinue
+    Remove-Item Env:VITE_API_URL, Env:VITE_COGNITO_AUTHORITY, Env:VITE_COGNITO_CLIENT_ID, Env:VITE_COGNITO_DOMAIN -ErrorAction SilentlyContinue
 }
 
 aws s3 sync "$root/ui/dist" "s3://$bucket" --delete

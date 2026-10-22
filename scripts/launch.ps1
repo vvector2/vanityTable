@@ -7,6 +7,8 @@
   - Starts docker-compose.local-dependencies.yml through WSL (Docker is not installed on Windows).
   - Installs Python and npm dependencies when they are missing.
   - Runs the API on http://localhost:8000 and the UI on http://localhost:5173 (or -UiPort).
+  - Sign-in and API tokens use the dev Cognito pool, so it needs AWS credentials for the dev account
+    (reads the dev Terraform outputs, see cognito-settings.ps1).
   Ctrl+C stops everything, including LocalStack. The table is recreated empty on every launch; fill it with quickSync.
 #>
 param(
@@ -27,6 +29,11 @@ function Invoke-Wsl([string]$command) {
 
 # WSL shuts its VM down (and Docker with it) shortly after the last wsl process exits,
 # so keep one running for as long as the app runs.
+. "$PSScriptRoot\cognito-settings.ps1"
+Write-Host "==> Reading the dev Cognito settings from Terraform" -ForegroundColor Cyan
+$cognito = Get-CognitoSettings -Env dev
+if ($UiPort -ne 5173) { Write-Warning "Cognito redirects sign-in back to http://localhost:5173/ only (dev_callback_urls)." }
+
 $wslKeepAlive = Start-Process wsl -ArgumentList "-e", "sleep", "infinity" -WindowStyle Hidden -PassThru
 $api = $null
 
@@ -45,9 +52,8 @@ try {
     if (-not (Test-Path "$root\ui\node_modules")) { npm --prefix "$root\ui" install }
 
     # Local settings for the API: everything points at LocalStack. Inherited by the child process.
-    $env:API_KEY = "dev"
-    $env:SYNC_API_KEY = "dev-sync"
-    $env:ADMIN_API_KEY = "dev-admin"
+    $env:COGNITO_ISSUER = $cognito.Issuer
+    $env:COGNITO_SCOPE_PREFIX = $cognito.ScopePrefix
     $env:TABLE_NAME = "Listings"
     $env:ALLOWED_ORIGINS = "http://localhost:$UiPort"
     $env:AWS_REGION = "eu-central-1"
@@ -56,7 +62,14 @@ try {
     $env:AWS_ACCESS_KEY_ID = "test"
     $env:AWS_SECRET_ACCESS_KEY = "test"
 
-    Write-Host "==> Starting API on http://localhost:8000 (docs: /docs, X-API-Key: dev)" -ForegroundColor Cyan
+    # The UI signs in against the dev pool; .local files are not committed.
+    @(
+        "VITE_COGNITO_AUTHORITY=$($cognito.Issuer)"
+        "VITE_COGNITO_CLIENT_ID=$($cognito.UiClientId)"
+        "VITE_COGNITO_DOMAIN=$($cognito.DomainUrl)"
+    ) | Set-Content -Encoding ascii "$root\ui\.env.development.local"
+
+    Write-Host "==> Starting API on http://localhost:8000 (docs: /docs, needs a dev Cognito token)" -ForegroundColor Cyan
     $api = Start-Process python -ArgumentList "-m", "pipenv", "run", "uvicorn", "app.main:app", "--reload", "--port", "8000" `
         -WorkingDirectory "$root\listingApi" -NoNewWindow -PassThru
 

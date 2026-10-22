@@ -1,3 +1,4 @@
+import { signOut } from "../auth";
 import { formatWhen } from "../format";
 import { useListings } from "../state/ListingsContext";
 
@@ -34,10 +35,15 @@ export default function Header() {
           <p className="brand-tagline">Retro i vintage toaletki z OLX</p>
         </div>
       </div>
-      <p className="sync-status">
-        <span className="sync-dot" aria-hidden="true" />
-        {lastSyncAt ? `Ostatni skan: ${formatWhen(lastSyncAt)}` : "Brak udanego skanu"}
-      </p>
+      <div className="header-meta">
+        <p className="sync-status">
+          <span className="sync-dot" aria-hidden="true" />
+          {lastSyncAt ? `Ostatni skan: ${formatWhen(lastSyncAt)}` : "Brak udanego skanu"}
+        </p>
+        <button type="button" className="btn-sign-out" onClick={() => void signOut()}>
+          Wyloguj
+        </button>
+      </div>
     </header>
   );
 }

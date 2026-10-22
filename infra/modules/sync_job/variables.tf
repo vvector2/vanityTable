@@ -30,12 +30,6 @@ variable "listing_api_url" {
   type        = string
 }
 
-variable "listing_api_key" {
-  description = "X-API-Key for POST /listings (the API's SYNC_API_KEY)."
-  type        = string
-  sensitive   = true
-}
-
 variable "cognito_user_pool_id" {
   type = string
 }

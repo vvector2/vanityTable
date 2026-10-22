@@ -25,9 +25,8 @@ resource "aws_lambda_function" "sync" {
       # The sync code reads an empty MAX_PAGES as all pages.
       MAX_PAGES = var.max_pages == null ? "" : tostring(var.max_pages)
       # An empty URL turns the upload to the Listings API off.
-      LISTING_API_URL           = var.listing_api_url
-      LISTING_API_KEY_PARAMETER = aws_ssm_parameter.listing_api_key.name
-      # Client credentials for the Listings API; not read by the sync code yet.
+      LISTING_API_URL = var.listing_api_url
+      # Client credentials for the Listings API (scope listings/create).
       COGNITO_TOKEN_URL               = var.cognito_token_url
       COGNITO_CLIENT_ID               = aws_cognito_user_pool_client.sync.id
       COGNITO_CLIENT_SECRET_PARAMETER = aws_ssm_parameter.sync_client_secret.name

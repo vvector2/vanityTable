@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api_utils import register_error_handlers
+from app.auth import TokenVerifier
 from app.endpoints import health_router, listings_router, listings_write_router, scan_job_router
 from app.repository import ListingRepository
 from app.scan_jobs import ScanJobRepository
@@ -20,6 +21,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Toaletka Listings API")
     app.state.settings = settings
+    app.state.token_verifier = TokenVerifier(settings.cognito_issuer)
     dynamodb = boto3.resource("dynamodb", region_name=settings.region)
     app.state.repository = ListingRepository(dynamodb.Table(settings.table_name))
     app.state.scan_jobs = ScanJobRepository(dynamodb.Table(settings.scan_jobs_table_name))
@@ -31,7 +33,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
         allow_methods=["GET", "PUT", "POST"],
-        allow_headers=["Content-Type", "X-API-Key"],
+        allow_headers=["Content-Type", "Authorization"],
     )
     register_error_handlers(app)
     app.include_router(health_router)

@@ -222,7 +222,11 @@ if $deploys_ui; then
   # CloudFront forwards /api/* to the Listings API, so the UI calls its own origin.
   # Process variables take precedence over ui/.env* files.
   npm --prefix "$root/ui" ci
-  VITE_API_URL=/api VITE_API_KEY="$(tf_output api_key)" npm --prefix "$root/ui" run build
+  VITE_API_URL=/api \
+    VITE_COGNITO_AUTHORITY="$(tf_output cognito_issuer)" \
+    VITE_COGNITO_CLIENT_ID="$(tf_output cognito_ui_client_id)" \
+    VITE_COGNITO_DOMAIN="$(tf_output cognito_domain_url)" \
+    npm --prefix "$root/ui" run build
 
   step "Uploading the UI"
   aws s3 sync "$root/ui/dist" "s3://$(tf_output ui_bucket)" --delete

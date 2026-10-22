@@ -1,12 +1,13 @@
 """HTTP client for the Listings API (listingApi/), used by the sync job to add listings.
 
 `POST /listings` (docs/llstingApi.md):
-- header `X-API-Key` (the API's `SYNC_API_KEY`), JSON body in camelCase (see `to_request_body`)
+- header `Authorization: Bearer <Cognito access token>` with scope `listings/create`
+  (see cognito_token.py), JSON body in camelCase (see `to_request_body`)
 - `sourceId` is the idempotency key: the source website name plus the listing's ID on
   that website, e.g. "olx:123". The API generates its own internal `id`.
 - `201` the listing was created, `409` it already existed and was left unchanged
 
-`PUT /scan-job/{id}` (same key) reports a run's status: `running`, `succeeded` or `failed`.
+`PUT /scan-job/{id}` (same token) reports a run's status: `running`, `succeeded` or `failed`.
 
 Resilience comes from libraries:
 - tenacity retries transient failures with exponential backoff (safe, the create is idempotent)
@@ -19,6 +20,7 @@ import logging
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from enum import StrEnum
 from typing import Any
 
@@ -86,14 +88,15 @@ class ListingApiClient:
     def __init__(
         self,
         base_url: str,
-        api_key: str,
+        token: Callable[[], str],
         timeout: float = 10.0,
         max_attempts: int = 3,
         breaker_fail_max: int = 10,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._url = self._base_url + "/listings"
-        self._api_key = api_key
+        # Returns a current access token; called per request, so an expired one is replaced.
+        self._token = token
         self._timeout = timeout
         self._retrying = Retrying(
             retry=retry_if_exception(is_transient),
@@ -131,7 +134,7 @@ class ListingApiClient:
                 "Content-Type": "application/json",
                 "Accept": "application/json",
                 "User-Agent": USER_AGENT,
-                "X-API-Key": self._api_key,
+                "Authorization": f"Bearer {self._token()}",
             },
         )
         try:
@@ -171,7 +174,7 @@ class ListingApiClient:
                 "Content-Type": "application/json",
                 "Accept": "application/json",
                 "User-Agent": USER_AGENT,
-                "X-API-Key": self._api_key,
+                "Authorization": f"Bearer {self._token()}",
             },
         )
         try:

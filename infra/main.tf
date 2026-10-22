@@ -56,7 +56,6 @@ module "sync_job" {
   max_pages        = var.max_pages
   # Upload stays off until the API has a deployment to receive it.
   listing_api_url       = var.api_image_tag == "" ? "" : module.listing_api.url
-  listing_api_key       = module.listing_api.sync_api_key
   cognito_user_pool_id  = module.common.cognito_user_pool_id
   cognito_token_url     = module.common.cognito_token_url
   listings_scope_prefix = module.common.listings_scope_prefix

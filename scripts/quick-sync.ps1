@@ -37,9 +37,16 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "playwright install failed" }
     }
 
-    # Same values launch.ps1 gives the API (SYNC_API_KEY).
+    # The local API checks tokens from the dev pool (launch.ps1), so use the dev sync client.
+    # Its secret is read from SSM, which needs AWS credentials for the dev account.
+    . "$PSScriptRoot\cognito-settings.ps1"
+    $cognito = Get-CognitoSettings -Env dev
     $env:LISTING_API_URL = $ApiUrl
-    $env:LISTING_API_KEY = "dev-sync"
+    $env:COGNITO_TOKEN_URL = $cognito.TokenUrl
+    $env:COGNITO_CLIENT_ID = $cognito.SyncClientId
+    $env:COGNITO_CLIENT_SECRET_PARAMETER = $cognito.SyncClientSecretParameter
+    $env:COGNITO_SCOPE = "$($cognito.ScopePrefix)/create"
+    $env:AWS_DEFAULT_REGION = "eu-central-1"
 
     Write-Host "==> Syncing $Pages page(s) of '$Query' from OLX" -ForegroundColor Cyan
     python -m pipenv run python src/run_local.py --query $Query --max-pages $Pages

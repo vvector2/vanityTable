@@ -1,6 +1,6 @@
 # Toaletka: Architecture
 
-Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account. Sections marked _(proposal)_ are not yet agreed.
+Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account; all API calls use Cognito tokens (API keys removed). Sections marked _(proposal)_ are not yet agreed.
 
 ## 1. Decisions so far
 
@@ -11,7 +11,7 @@ Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform 
 | Backend                | Python: sync job on Lambda (container image), Listings API on FastAPI   |
 | UI                     | Simple React app, mobile-friendly                                       |
 | Persistence            | DynamoDB                                                                |
-| Access protection      | Cognito user pool: one UI user (no self sign-up), M2M client for the sync job. X-API-Key stays until the code checks tokens |
+| Access protection      | OAuth 2.0 with a Cognito user pool: one UI user (no self sign-up, code flow with PKCE), M2M clients (client credentials) for the sync job and for admin deletes. No API keys |
 | Entry point            | CloudFront serves the UI at `/` and forwards `/api/*` to the Listings API. Route 53 custom domain optional |
 | Infrastructure as code | Terraform, one root with modules `common`, `frontend`, `listing_api`, `sync_job` |
 | Environments           | `dev` and `prod`, each in its own AWS account of the organization, with its own state bucket |
@@ -37,7 +37,7 @@ EventBridge (rate 30 min) --> Sync Lambda ----------------------+
 | Source adapter (module in sync Lambda) | The only code that knows OLX. Returns normalized listings. Replaceable.                                |
 | Listings API (Lightsail container)     | FastAPI. Lists listings by status, records decisions, accepts listings from the sync job. See `llstingApi.md` |
 | DynamoDB                               | Listings, decisions, sync metadata                                                                     |
-| Cognito user pool                      | UI sign-in (code flow with PKCE) and the sync job's client credentials (scope `listings/create`)       |
+| Cognito user pool                      | UI sign-in (code flow with PKCE), the sync job's client credentials (scope `listings/create`) and the admin client (scope `listings/admin`) |
 | SSM Parameter Store                    | Sync job's Cognito client secret; later fuzzy threshold, exceptions list, search settings              |
 | S3 + CloudFront (+ Route 53)           | Hosts the static React build; `/api/*` goes to the Listings API on the same origin                     |
 
@@ -90,7 +90,7 @@ The Listings API endpoints are defined in `llstingApi.md`: `GET /listings?status
 
 Still open _(proposal)_: an endpoint for `last_success_at` (functional requirement 7).
 
-Access: Cognito scopes `listings/read` and `listings/decide` (UI) and `listings/create` (sync job). Until the API validates tokens, the X-API-Key headers from `llstingApi.md` are used.
+Access: Cognito access tokens (`Authorization: Bearer`), validated by the API. Scopes `listings/read` and `listings/decide` (UI), `listings/create` (sync job), `listings/admin` (admin client). Endpoint mapping in `llstingApi.md`, section Auth.
 
 ## 8. Infrastructure (Terraform)
 
@@ -126,7 +126,6 @@ Access: Cognito scopes `listings/read` and `listings/decide` (UI) and `listings/
 ## 10. Open items
 
 - **Spike results** (pending) decide: query scope versus fuzzy search, how to get descriptions, and how listing activity is detected.
-- **API token checks:** the Listings API and the sync job still use X-API-Key; switching them to Cognito tokens is pending code work.
 - **First-run behavior:** all existing matches go to review, or sort by newest.
 
 ## 11. Next steps
@@ -134,4 +133,4 @@ Access: Cognito scopes `listings/read` and `listings/decide` (UI) and `listings/
 1. Run the spike from Lambda.
 2. Confirm the data model and sync flow against the spike results.
 3. `dev` has its state bucket, OIDC provider and `github-actions-dev` role; set up the GitHub environments and deploy it through CI. For `prod`, create the same by hand (`terraform-state-s3-vt-prod`, `github-actions-prod`), see `infra/README.md`.
-4. Validate Cognito tokens in the Listings API and use client credentials in the sync job; then drop `API_KEY` and `SYNC_API_KEY`.
+4. ~~Validate Cognito tokens in the Listings API and use client credentials in the sync job; drop the API keys~~: done.

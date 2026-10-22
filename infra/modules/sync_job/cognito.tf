@@ -24,9 +24,3 @@ resource "aws_ssm_parameter" "sync_client_secret" {
   type  = "SecureString"
   value = aws_cognito_user_pool_client.sync.client_secret
 }
-
-resource "aws_ssm_parameter" "listing_api_key" {
-  name  = "/${var.name}/sync/listing-api-key"
-  type  = "SecureString"
-  value = var.listing_api_key
-}
