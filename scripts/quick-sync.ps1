@@ -7,7 +7,7 @@
   (quickSync.cmd in the repo root calls this script)
   - Needs the app running (launch.cmd in another window): it uploads to the local Listings API.
   - Installs Python dependencies and Playwright Chromium when they are missing.
-  - Runs the Lambda handler through syncJob\src\run_local.py; the raw result goes to syncJob\output\.
+  - Runs the Lambda handler through syncJob\src\run_local.py.
 #>
 param(
     # How many OLX results pages to fetch.

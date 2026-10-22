@@ -8,7 +8,7 @@ Playwright and Chromium are too big for a zip package, so on AWS the Lambda runs
 ```
 pipenv install --dev
 pipenv run playwright install chromium
-pipenv run python src/run_local.py --max-pages 1      # through the Lambda handler, saves to output/
+pipenv run python src/run_local.py --max-pages 1      # through the Lambda handler
 pipenv run python src/olx_browser_bot.py --headed     # the bot alone, with a visible browser
 ```
 
@@ -20,7 +20,7 @@ The image includes the Lambda Runtime Interface Emulator.
 
 ```
 docker build --platform linux/amd64 --provenance=false -t toaletka-sync .
-docker run --rm -p 9000:8080 -e OUTPUT_DIR=/tmp/output -v ${PWD}/output:/tmp/output toaletka-sync
+docker run --rm -p 9000:8080 toaletka-sync
 curl -X POST http://localhost:9000/2015-03-31/functions/function/invocations -d '{"max_pages": 1}'
 ```
 
@@ -41,11 +41,10 @@ terraform -chdir=infra apply -var-file=environments/dev.tfvars -var sync_image_t
 
 `LISTING_API_URL` is set by Terraform from the `listing_api` module, and stays empty (upload off) until the API has an image. The API key is not in the Lambda configuration: Terraform stores it in SSM and passes the parameter name in `LISTING_API_KEY_PARAMETER`.
 
-Invoke by hand and read the result:
+Invoke by hand; the result (pages fetched, listing count, upload summary) is in `out.json`:
 
 ```
 aws lambda invoke --function-name toaletka-sync --cli-binary-format raw-in-base64-out --payload '{"max_pages": 1}' out.json
-aws s3 cp s3://<sync_output_bucket>/listings/latest.json -
 ```
 
 The 30-minute schedule exists but is off. Turn it on with `-var sync_schedule_enabled=true`.
@@ -56,9 +55,7 @@ The 30-minute schedule exists but is off. Turn it on with `-var sync_schedule_en
 | ----------- | -------------------- | ---------- |
 | `query`     | `OLX_QUERY`          | `toaletki` |
 | `max_pages` | `MAX_PAGES`          | all pages  |
-| `delay`     | `PAGE_DELAY_SECONDS` | `10`       |
-
-Output goes to S3 when `OUTPUT_BUCKET` is set, otherwise to `OUTPUT_DIR` (default `output/`).
+| `delay`     | `PAGE_DELAY_SECONDS` | `0.5` (plus a random 0 to 0.5 s) |
 
 ## Upload to the Listings API
 

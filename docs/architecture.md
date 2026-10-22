@@ -101,7 +101,7 @@ Access: Cognito scopes `listings/read` and `listings/decide` (UI) and `listings/
 | `common`      | DynamoDB `Listings` table and GSI, Cognito user pool, domain and `listings` resource server        |
 | `frontend`    | S3 bucket, CloudFront (OAC, `/api/*` behavior, prefix-stripping function), optional ACM + Route 53, Cognito UI client |
 | `listing_api` | ECR repository, Lightsail container service and deployment, IAM user for DynamoDB, API keys        |
-| `sync_job`    | ECR repository, Lambda (container image), EventBridge rule, output bucket, Cognito M2M client, SSM secret |
+| `sync_job`    | ECR repository, Lambda (container image), EventBridge rule, Cognito M2M client, SSM secret |
 | `github_ci`   | GitHub OIDC provider (one per account), a read-only plan role and a deploy role                    |
 
 - Remote state in an S3 bucket per account, created by hand before the environment's first apply, with S3 native locking.

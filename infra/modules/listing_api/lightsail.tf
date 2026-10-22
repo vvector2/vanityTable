@@ -27,6 +27,8 @@ resource "aws_lightsail_container_service_deployment_version" "api" {
       API_KEY               = random_password.api_key.result
       SYNC_API_KEY          = random_password.sync_api_key.result
       ADMIN_API_KEY         = random_password.admin_api_key.result
+      SCAN_JOBS_TABLE_NAME  = var.scan_jobs_table_name
+      SCAN_FUNCTION_NAME    = var.sync_function_name
       # The UI calls the API through CloudFront on its own origin, so CORS stays off.
       ALLOWED_ORIGINS = ""
       # For Cognito token checks; not read by the API yet.

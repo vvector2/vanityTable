@@ -22,7 +22,7 @@ jobs:
           python-version: "3.12"
       # No tests yet; add pytest here with the first test module.
       - name: Lint
-        run: pipx run ruff check syncJob listingApi
+        run: pipx run ruff==0.17.1 check syncJob listingApi
       - name: Compile
         run: python -m compileall -q syncJob/src listingApi/app
 

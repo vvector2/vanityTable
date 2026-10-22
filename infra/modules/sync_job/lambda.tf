@@ -4,25 +4,24 @@ locals {
 }
 
 resource "aws_cloudwatch_log_group" "sync" {
-  name              = "/aws/lambda/${var.name}-sync"
+  name              = "/aws/lambda/${var.function_name}"
   retention_in_days = 14
 }
 
 resource "aws_lambda_function" "sync" {
   count         = local.deploy
-  function_name = "${var.name}-sync"
+  function_name = var.function_name
   role          = aws_iam_role.sync.arn
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.sync.repository_url}:${var.image_tag}"
   architectures = ["x86_64"]
-  # Chromium needs memory; a full run is ~25 pages with a 10 s pause between them.
+  # Chromium needs memory; a full run is ~25 pages with a 0.5-1 s pause between them.
   memory_size = 2048
   timeout     = 900
 
   environment {
     variables = {
-      OUTPUT_BUCKET = aws_s3_bucket.output.id
-      OLX_QUERY     = var.olx_query
+      OLX_QUERY = var.olx_query
       # The sync code reads an empty MAX_PAGES as all pages.
       MAX_PAGES = var.max_pages == null ? "" : tostring(var.max_pages)
       # An empty URL turns the upload to the Listings API off.

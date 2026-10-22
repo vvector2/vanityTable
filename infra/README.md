@@ -7,7 +7,7 @@ One Terraform root module, deployed as two environments, `dev` and `prod`. Desig
 | `modules/common`      | DynamoDB `Listings` table, Cognito user pool, its domain and the `listings` resource server   |
 | `modules/frontend`    | UI bucket, CloudFront (`/` to S3, `/api/*` to the Listings API), optional ACM + Route 53, Cognito UI client |
 | `modules/listing_api` | ECR repository, Lightsail container service and deployment, DynamoDB IAM user, API keys       |
-| `modules/sync_job`    | ECR repository, sync Lambda, 30-minute EventBridge rule, output bucket, Cognito M2M client    |
+| `modules/sync_job`    | ECR repository, sync Lambda, 30-minute EventBridge rule, Cognito M2M client |
 | `modules/github_ci`   | GitHub OIDC provider, `<name>-github-plan` (read-only, pushes images) and `<name>-github-deploy` roles |
 
 ## Environments
@@ -58,6 +58,14 @@ Each account has its own OIDC provider and roles. The workflow builds the role A
 1. Deploy both environments once locally (above). This creates the roles. No GitHub variables or secrets are needed.
 2. Environments (Settings → Environments) `dev` and `prod`: add yourself as a required reviewer, and set deployment branches to `master` only.
 3. Branch protection on `master`: require the `CI` checks (`python`, `ui`, `terraform`).
+
+## Removing the environment
+
+```
+AWS_PROFILE=<dev profile> ./scripts/nuke-env.sh --env dev
+```
+
+Destroys everything in the state, including the Listings table (all decisions) and the Cognito user pool. It turns off their deletion protection with the AWS CLI first, and asks you to type the environment name unless you pass `--yes`. Like `deploy.sh`, it stops unless you are signed in to that environment's account. The state bucket is kept.
 
 ## Notes
 

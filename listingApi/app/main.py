@@ -8,8 +8,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api_utils import register_error_handlers
-from app.endpoints import health_router, listings_router, listings_write_router
+from app.endpoints import health_router, listings_router, listings_write_router, scan_job_router
 from app.repository import ListingRepository
+from app.scan_jobs import ScanJobRepository
+from app.scan_trigger import ScanTrigger
 from app.settings import load_settings
 
 
@@ -18,20 +20,24 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="Toaletka Listings API")
     app.state.settings = settings
-    app.state.repository = ListingRepository(
-        boto3.resource("dynamodb", region_name=settings.region).Table(settings.table_name)
+    dynamodb = boto3.resource("dynamodb", region_name=settings.region)
+    app.state.repository = ListingRepository(dynamodb.Table(settings.table_name))
+    app.state.scan_jobs = ScanJobRepository(dynamodb.Table(settings.scan_jobs_table_name))
+    app.state.scan_trigger = ScanTrigger(
+        boto3.client("lambda", region_name=settings.region), settings.scan_function_name
     )
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
-        allow_methods=["GET", "PUT"],
+        allow_methods=["GET", "PUT", "POST"],
         allow_headers=["Content-Type", "X-API-Key"],
     )
     register_error_handlers(app)
     app.include_router(health_router)
     app.include_router(listings_router)
     app.include_router(listings_write_router)
+    app.include_router(scan_job_router)
     return app
 
 

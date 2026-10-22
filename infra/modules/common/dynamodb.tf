@@ -58,3 +58,48 @@ resource "aws_dynamodb_table" "listings" {
     }
   }
 }
+
+# One item per sync run (manual or scheduled), see docs/llstingApi.md, section Scan jobs.
+# Short-lived status data, so no deletion protection or point-in-time recovery.
+resource "aws_dynamodb_table" "scan_jobs" {
+  name         = "${var.name}-scan-jobs"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
+
+  attribute {
+    name = "id"
+    type = "S"
+  }
+
+  attribute {
+    name = "kind"
+    type = "S"
+  }
+
+  attribute {
+    name = "createdAt"
+    type = "S"
+  }
+
+  # The API sets expiresAt to 3 days after creation; DynamoDB deletes expired items for free.
+  ttl {
+    attribute_name = "expiresAt"
+    enabled        = true
+  }
+
+  # Every job has kind = "scan", so one query lists all jobs newest first.
+  global_secondary_index {
+    name            = "kind-createdAt-index"
+    projection_type = "ALL"
+
+    key_schema {
+      attribute_name = "kind"
+      key_type       = "HASH"
+    }
+
+    key_schema {
+      attribute_name = "createdAt"
+      key_type       = "RANGE"
+    }
+  }
+}
