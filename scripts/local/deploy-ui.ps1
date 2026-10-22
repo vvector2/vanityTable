@@ -1,8 +1,8 @@
 # Builds the React UI, uploads it to the UI bucket and invalidates CloudFront.
-# Usage: ./scripts/deploy-ui.ps1
+# Usage: ./scripts/local/deploy-ui.ps1
 # Needs Node, the AWS CLI and an applied Terraform state (reads its outputs).
 $ErrorActionPreference = "Stop"
-$root = Split-Path $PSScriptRoot -Parent
+$root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
 function Get-TerraformOutput([string]$Name) {
     $value = terraform -chdir="$root/infra" output -raw $Name

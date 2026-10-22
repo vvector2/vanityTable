@@ -29,13 +29,13 @@ curl -X POST http://localhost:9000/2015-03-31/functions/function/invocations -d 
 From the repository root, with Docker, Terraform >= 1.10 and the AWS CLI. Full stack setup: `infra/README.md`.
 
 ```
-./scripts/deploy.sh --env dev                # builds and pushes both images, plans, asks, applies
+./scripts/local/deploy.sh --env dev                # builds and pushes both images, plans, asks, applies
 ```
 
 Or by hand, with `infra/` initialized for the environment (`deploy.sh` does that):
 
 ```
-./scripts/build-sync-image.ps1 -Push         # prints the image tag
+./scripts/local/build-sync-image.ps1 -Push         # prints the image tag
 terraform -chdir=infra apply -var-file=environments/dev.tfvars -var sync_image_tag=<tag> -var api_image_tag=<running api tag>
 ```
 

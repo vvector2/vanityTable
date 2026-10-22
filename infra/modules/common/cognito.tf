@@ -69,7 +69,7 @@ resource "aws_cognito_resource_server" "listings" {
 }
 
 # Machine client for admin calls (DELETE /listings/{id}): client credentials, admin scope only.
-# Get a token with scripts/admin-token.ps1.
+# Get a token with scripts/local/admin-token.ps1.
 resource "aws_cognito_user_pool_client" "admin" {
   name         = "${var.name}-admin"
   user_pool_id = aws_cognito_user_pool.main.id

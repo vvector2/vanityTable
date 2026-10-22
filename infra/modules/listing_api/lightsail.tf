@@ -10,7 +10,7 @@ resource "aws_lightsail_container_service" "api" {
   }
 }
 
-# Skipped until the first image is pushed (scripts/build-api-image.ps1 -Push).
+# Skipped until the first image is pushed (scripts/local/build-api-image.ps1 -Push).
 resource "aws_lightsail_container_service_deployment_version" "api" {
   count        = var.image_tag == "" ? 0 : 1
   service_name = aws_lightsail_container_service.api.name

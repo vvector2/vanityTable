@@ -1,5 +1,5 @@
 locals {
-  # Skipped until the first image is pushed (scripts/build-sync-image.ps1 -Push).
+  # Skipped until the first image is pushed (scripts/local/build-sync-image.ps1 -Push).
   deploy = var.image_tag != "" ? 1 : 0
 }
 

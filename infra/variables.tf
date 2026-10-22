@@ -49,7 +49,7 @@ variable "dev_callback_urls" {
 
 # No default: an apply that forgets the tag would remove the running deployment.
 variable "api_image_tag" {
-  description = "Tag of the Listings API image in ECR, printed by scripts/build-api-image.ps1. Pass \"\" only before the first push; it skips the Lightsail deployment."
+  description = "Tag of the Listings API image in ECR, printed by scripts/local/build-api-image.ps1. Pass \"\" only before the first push; it skips the Lightsail deployment."
   type        = string
   nullable    = false
 }
@@ -69,7 +69,7 @@ variable "api_power" {
 
 # No default, for the same reason as api_image_tag.
 variable "sync_image_tag" {
-  description = "Tag of the sync image in ECR, printed by scripts/build-sync-image.ps1. Pass \"\" only before the first push; it skips the Lambda."
+  description = "Tag of the sync image in ECR, printed by scripts/local/build-sync-image.ps1. Pass \"\" only before the first push; it skips the Lambda."
   type        = string
   nullable    = false
 }

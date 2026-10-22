@@ -13,7 +13,7 @@ Repository layout:
 - `listingApi/` Listings API (FastAPI), see `docs/llstingApi.md`
 - `ui/` React app
 - `infra/` Terraform root module with child modules (`infra/README.md`)
-- `scripts/` build and deploy scripts (`deploy.sh --env dev|prod` is the full deploy)
+- `scripts/` build and deploy scripts: `local/` for your machine (`local/deploy.sh --env dev|prod` is the full deploy, `launch.ps1`, `quick-sync.ps1`), `ci/` for the GitHub Actions deploy, `lib/` shared deploy steps
 - `.github/workflows/` CI on pull requests, deploys to `dev` and `prod` (`infra/README.md`)
 - `docs/` requirements and architecture
 

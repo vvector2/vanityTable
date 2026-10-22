@@ -3,10 +3,10 @@
   Prints an access token with the listings/admin scope, for DELETE /listings/{id}.
 
 .DESCRIPTION
-  Usage: ./scripts/admin-token.ps1 [-Env dev|prod]
+  Usage: ./scripts/local/admin-token.ps1 [-Env dev|prod]
   Uses the admin machine client (client credentials). Needs AWS credentials for that
   environment's account. Example:
-    $token = ./scripts/admin-token.ps1
+    $token = ./scripts/local/admin-token.ps1
     curl.exe -X DELETE -H "Authorization: Bearer $token" <ui_url>/api/listings/<id>
 #>
 param(

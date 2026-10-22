@@ -1,5 +1,5 @@
 # Builds the Listings API image and pushes it to ECR. Prints the tag to pass to Terraform.
-# Usage: ./scripts/build-api-image.ps1 [-Push]
+# Usage: ./scripts/local/build-api-image.ps1 [-Push]
 # Needs Docker, and for -Push the AWS CLI plus one `terraform apply` (creates the ECR repository).
 param([switch]$Push)
 

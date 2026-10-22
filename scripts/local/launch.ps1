@@ -17,7 +17,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path $PSScriptRoot -Parent
+$root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $compose = "docker compose -f docker-compose.local-dependencies.yml"
 
 function Invoke-Wsl([string]$command) {

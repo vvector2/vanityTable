@@ -1,5 +1,5 @@
-# Non-secret settings for prod, used by scripts/deploy.sh and the deploy workflow.
-# Image tags are not kept here: deploy.sh builds new ones or reads the running ones.
+# Non-secret settings for prod, used by scripts/local/deploy.sh and scripts/ci/*.sh (the deploy workflow).
+# Image tags are not kept here: the deploy scripts build new ones or read the running ones.
 environment = "prod"
 # Terraform refuses to run against any other account.
 aws_account_id = "231112632464"

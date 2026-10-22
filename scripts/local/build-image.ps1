@@ -8,7 +8,7 @@ param(
     [switch]$Push
 )
 $ErrorActionPreference = "Stop"
-$root = Split-Path $PSScriptRoot -Parent
+$root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
 $sha = git -C $root rev-parse --short HEAD
 $tag = "$sha-$(Get-Date -Format 'yyyyMMddHHmmss')"

@@ -17,7 +17,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path $PSScriptRoot -Parent
+$root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
 Write-Host "==> Checking the Listings API at $ApiUrl" -ForegroundColor Cyan
 try {

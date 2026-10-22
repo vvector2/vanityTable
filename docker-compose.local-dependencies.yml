@@ -1,5 +1,5 @@
 # Local dependencies for development: LocalStack emulating DynamoDB.
-# Started by launch (scripts/launch.ps1) through WSL (Docker runs inside WSL, not on Windows).
+# Started by launch (scripts/local/launch.ps1) through WSL (Docker runs inside WSL, not on Windows).
 #
 # Pinned to 4.9: newer LocalStack images require an auth token.
 
@@ -14,7 +14,7 @@ services:
       SERVICES: dynamodb
       AWS_DEFAULT_REGION: eu-central-1
     volumes:
-      - ./scripts/localstack-init:/etc/localstack/init/ready.d:ro
+      - ./scripts/local/localstack-init:/etc/localstack/init/ready.d:ro
     healthcheck:
       # Healthy only after the init script has created the table.
       test: ["CMD-SHELL", "curl -sf localhost:4566/_localstack/init/ready | grep -q '\"completed\": true'"]

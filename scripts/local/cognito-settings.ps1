@@ -9,7 +9,7 @@
 #>
 
 function Get-CognitoSettings([ValidateSet("dev", "prod")][string]$Env = "dev") {
-    $infra = Join-Path (Split-Path $PSScriptRoot -Parent) "infra"
+    $infra = Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) "infra"
     terraform -chdir="$infra" init -input=false -reconfigure "-backend-config=environments/$Env.s3.tfbackend" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "terraform init for $Env failed (signed in to the $Env account?)" }
 

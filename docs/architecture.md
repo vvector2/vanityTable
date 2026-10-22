@@ -1,6 +1,6 @@
 # Toaletka: Architecture
 
-Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account; all API calls use Cognito tokens (API keys removed). Sections marked _(proposal)_ are not yet agreed.
+Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account; local and CI scripts split (`scripts/local`, `scripts/ci`); all API calls use Cognito tokens (API keys removed). Sections marked _(proposal)_ are not yet agreed.
 
 ## 1. Decisions so far
 
@@ -105,10 +105,10 @@ Access: Cognito access tokens (`Authorization: Bearer`), validated by the API. S
 
 - Remote state in an S3 bucket per account, created by hand before the environment's first apply, with S3 native locking (`terraform-state-s3-vt-dev`, `terraform-state-s3-vt-prod`).
 - CI access is outside Terraform: in each account the GitHub OIDC provider and the role `github-actions-<env>` are created by hand.
-- Terraform does not build code. Scripts in `scripts/` do:
-  - `build-sync-image.ps1` and `build-api-image.ps1`: build and push the container images; the tag goes to Terraform.
-  - `deploy-ui.ps1`: build React, upload to S3, invalidate CloudFront.
-  - `deploy.sh --env <env>`: all of the above plus plan and apply, for one environment.
+- Terraform does not build code. Scripts in `scripts/` do, split by where they run:
+  - `local/` (your machine, interactive): `deploy.sh --env <env>` builds and pushes both images, plans, asks and applies, then uploads the UI. `build-*-image.ps1` and `deploy-ui.ps1` do single steps; `launch.ps1` and `quick-sync.ps1` run the app locally.
+  - `ci/` (GitHub Actions, never prompt): `plan.sh` and `apply.sh`, one per deploy job.
+  - `lib/deploy-common.sh`: the deploy steps both use, so a local and a CI deploy do the same.
 - CI/CD (`.github/workflows/`, setup in `infra/README.md`):
   - Pull requests: Python lint, UI build, `terraform fmt` and `validate`. No AWS access.
   - A push to `master` deploys `dev`. A manual workflow deploys any ref to `dev` or `prod`.
