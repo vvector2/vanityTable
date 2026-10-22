@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Bash(git * push)",
+      "Bash(git * push *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh repo sync *)",
+      "PowerShell(git push)",
+      "PowerShell(git push *)",
+      "PowerShell(git * push)",
+      "PowerShell(git * push *)",
+      "PowerShell(gh pr create *)",
+      "PowerShell(gh pr merge *)",
+      "PowerShell(gh repo sync *)",
+      "mcp__ccd_pr__set_auto_merge"
+    ]
+  }
+}
