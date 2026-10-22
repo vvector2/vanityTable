@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Stops and removes one whole AWS environment: everything in its Terraform state, including the
 # Listings table (all decisions), the Cognito user pool (and its UI user), the Lightsail service,
-# the sync Lambda, CloudFront, the buckets, the ECR images and the CI roles. The counterpart of deploy.sh.
+# the sync Lambda, CloudFront, the buckets and the ECR images. The counterpart of deploy.sh.
 # Usage: ./scripts/nuke-env.sh --env dev|prod [--yes]
 #   --env  Environment: settings and AWS account from infra/environments/<env>.tfvars, state bucket
 #          and key from infra/environments/<env>.s3.tfbackend. Sign in to that account first.
@@ -71,9 +71,7 @@ if [[ "$caller_account" != "$account" ]]; then
 fi
 echo "$caller_arn"
 
-export TF_VAR_state_bucket="$(setting "$backend_file" bucket)" TF_VAR_state_key="$(setting "$backend_file" key)"
-
-step "Terraform init ($env: s3://$TF_VAR_state_bucket/$TF_VAR_state_key)"
+step "Terraform init ($env: s3://$(setting "$backend_file" bucket)/$(setting "$backend_file" key))"
 # -reconfigure: infra/.terraform may still point at the other environment's state.
 tf init -input=false -reconfigure -backend-config="$backend_file"
 

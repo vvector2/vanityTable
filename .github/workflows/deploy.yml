@@ -1,8 +1,8 @@
 # The one deploy logic, called by deploy-dev.yml and deploy-manual.yml.
-# plan: builds and pushes the images and writes the Terraform plan (read-only role).
+# plan: builds and pushes the images and writes the Terraform plan.
 # apply: waits for approval on the GitHub environment, then applies that exact plan
-# and deploys the UI (deploy role). Both halves are scripts/deploy.sh.
-# Setup (roles, environments): infra/README.md, section CI/CD.
+# and deploys the UI. Both halves are scripts/deploy.sh and use the same AWS role.
+# Setup (role, environments): infra/README.md, section CI/CD.
 name: Deploy
 
 on:
@@ -32,28 +32,25 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.source.outputs.sha }}
-      plan_role: ${{ steps.source.outputs.plan_role }}
-      deploy_role: ${{ steps.source.outputs.deploy_role }}
+      role: ${{ steps.source.outputs.role }}
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      # Each environment has its own AWS account, named in its tfvars. Role names come from
-      # modules/github_ci: <name>-github-plan and <name>-github-deploy.
+      # Each environment has its own AWS account, named in its tfvars. The role is created
+      # by hand in that account as github-actions-<env> (infra/README.md, section CI/CD).
       - id: source
-        name: Resolve commit, account and roles
+        name: Resolve commit, account and role
         env:
           VAR_FILE: infra/environments/${{ inputs.environment }}.tfvars
         run: |
           setting() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"\(.*\)\".*/\1/p" "$VAR_FILE" | head -n1; }
           account="$(setting aws_account_id)"
-          name="$(setting name)"
-          [[ "$account" =~ ^[0-9]{12}$ && -n "$name" ]] || { echo "No aws_account_id or name in $VAR_FILE" >&2; exit 1; }
+          [[ "$account" =~ ^[0-9]{12}$ ]] || { echo "No aws_account_id in $VAR_FILE" >&2; exit 1; }
           {
             echo "sha=$(git rev-parse HEAD)"
-            echo "plan_role=arn:aws:iam::$account:role/$name-github-plan"
-            echo "deploy_role=arn:aws:iam::$account:role/$name-github-deploy"
+            echo "role=arn:aws:iam::$account:role/github-actions-${{ inputs.environment }}"
           } >> "$GITHUB_OUTPUT"
 
       - uses: hashicorp/setup-terraform@v3
@@ -64,11 +61,12 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ steps.source.outputs.plan_role }}
+          role-to-assume: ${{ steps.source.outputs.role }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # --yes: on an environment's first run, create the ECR repositories without a prompt.
       - name: Build images and plan
-        run: ./scripts/deploy.sh --env "${{ inputs.environment }}" --plan-only
+        run: ./scripts/deploy.sh --env "${{ inputs.environment }}" --plan-only --yes
 
       - name: Plan summary
         run: |
@@ -110,7 +108,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ needs.plan.outputs.deploy_role }}
+          role-to-assume: ${{ needs.plan.outputs.role }}
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: actions/download-artifact@v4

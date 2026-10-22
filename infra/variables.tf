@@ -96,24 +96,3 @@ variable "max_pages" {
     error_message = "max_pages must be at least 1, or null for all pages."
   }
 }
-
-# CI/CD (GitHub Actions)
-
-variable "github_repository" {
-  description = "owner/repo whose workflows may deploy this environment."
-  type        = string
-}
-
-variable "create_github_oidc_provider" {
-  description = "The GitHub OIDC provider exists once per account. False only if the account already has one."
-  type        = bool
-}
-
-# Set by scripts/deploy.sh from environments/<env>.s3.tfbackend; the CI roles may only touch this state.
-variable "state_bucket" {
-  type = string
-}
-
-variable "state_key" {
-  type = string
-}

@@ -8,7 +8,8 @@ One Terraform root module, deployed as two environments, `dev` and `prod`. Desig
 | `modules/frontend`    | UI bucket, CloudFront (`/` to S3, `/api/*` to the Listings API), optional ACM + Route 53, Cognito UI client |
 | `modules/listing_api` | ECR repository, Lightsail container service and deployment, DynamoDB IAM user, API keys       |
 | `modules/sync_job`    | ECR repository, sync Lambda, 30-minute EventBridge rule, Cognito M2M client |
-| `modules/github_ci`   | GitHub OIDC provider, `<name>-github-plan` (read-only, pushes images) and `<name>-github-deploy` roles |
+
+CI access (the GitHub OIDC provider and the `github-actions-<env>` role) is created by hand in each account, outside Terraform; see CI/CD below.
 
 ## Environments
 
@@ -30,9 +31,9 @@ AWS_PROFILE=<dev profile> ./scripts/deploy.sh --env dev
 AWS_PROFILE=<prod profile> ./scripts/deploy.sh --env prod
 ```
 
-Before the first `prod` run, create its state bucket in the prod account, named as in `environments/prod.s3.tfbackend` (versioning on, public access blocked).
+Each account's state bucket is created by hand before its first run, named as in `environments/<env>.s3.tfbackend` (versioning on, public access blocked). `dev` has `terraform-state-s3-vt-dev`; `prod` still needs `terraform-state-s3-vt-prod`.
 
-It initializes `infra/` for that environment, builds and pushes both images, shows the plan, asks before applying, then deploys the UI and calls `/api/health`. The first run of an environment also creates its ECR repositories and CI roles. The PowerShell scripts (`build-*-image.ps1`, `deploy-ui.ps1`) read Terraform outputs, so they act on whichever environment `infra/` was last initialized for.
+It initializes `infra/` for that environment, builds and pushes both images, shows the plan, asks before applying, then deploys the UI and calls `/api/health`. The first run of an environment also creates its ECR repositories. The PowerShell scripts (`build-*-image.ps1`, `deploy-ui.ps1`) read Terraform outputs, so they act on whichever environment `infra/` was last initialized for.
 
 Create the UI user by hand (no self sign-up), once per environment:
 
@@ -47,15 +48,21 @@ aws cognito-idp admin-create-user --user-pool-id <pool-id> --username <email>
 | `ci.yml`            | Pull request to `master`    | ruff, UI build (with typecheck), `terraform fmt` and `validate`. No AWS access |
 | `deploy-dev.yml`    | Push to `master`            | Calls `deploy.yml` for `dev`                                 |
 | `deploy-manual.yml` | "Run workflow" from `master` | Calls `deploy.yml` for `dev` or `prod`, with an optional ref  |
-| `deploy.yml`        | Reusable                    | Plan job (plan role) → approval → apply job (deploy role)    |
+| `deploy.yml`        | Reusable                    | Plan job → approval → apply job, both as `github-actions-<env>` |
 
 The plan job runs `deploy.sh --plan-only`: it builds and pushes the images, plans, writes the resource changes to the run summary and uploads `tfplan` (kept 1 day; it holds state values, secrets included). The apply job runs in the GitHub environment, waits for approval and runs `deploy.sh --apply-plan` on the same commit. One deploy per environment at a time; a newer one queues.
 
-Each account has its own OIDC provider and roles. The workflow builds the role ARNs from `aws_account_id` and `name` in the environment's tfvars, so a `prod` run can only obtain credentials in the prod account. The roles trust only this repository: the plan role trusts workflows running on `master`, and the deploy role trusts jobs in its GitHub environment. The deploy role manages `github_ci` too, so it could widen its own policy; the gate is the reviewer.
+On an environment's first run the plan job also creates the ECR repositories (`--yes`), so CI can deploy an empty account; no local deployment is needed first.
+
+Each account has its own OIDC provider and one role, `github-actions-<env>`, both created by hand and not managed by Terraform. The workflow builds the role ARN from `aws_account_id` in the environment's tfvars, so a `prod` run can only obtain credentials in the prod account. Both jobs use that role, so the plan job (which runs without approval on every push to `master`) has the same rights as the apply; the gate is the reviewer on the GitHub environment.
 
 ### One-time setup
 
-1. Deploy both environments once locally (above). This creates the roles. No GitHub variables or secrets are needed.
+1. Per account: the state bucket (above), an IAM OIDC identity provider for `https://token.actions.githubusercontent.com` with audience `sts.amazonaws.com`, and a role `github-actions-<env>` (`github-actions-dev` exists). Its trust policy allows `sts:AssumeRoleWithWebIdentity` from that provider with `aud` = `sts.amazonaws.com` and `sub` matching both:
+   - `repo:vvector2/vanityTable:ref:refs/heads/master` (plan job)
+   - `repo:vvector2/vanityTable:environment:<env>` (apply job, runs in the GitHub environment)
+
+   Its permissions must cover the whole stack (for example `AdministratorAccess`) plus the state bucket. No GitHub variables or secrets are needed.
 2. Environments (Settings → Environments) `dev` and `prod`: add yourself as a required reviewer, and set deployment branches to `master` only.
 3. Branch protection on `master`: require the `CI` checks (`python`, `ui`, `terraform`).
 

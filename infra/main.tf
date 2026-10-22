@@ -61,14 +61,3 @@ module "sync_job" {
   cognito_token_url     = module.common.cognito_token_url
   listings_scope_prefix = module.common.listings_scope_prefix
 }
-
-module "github_ci" {
-  source = "./modules/github_ci"
-
-  name                 = var.name
-  environment          = var.environment
-  github_repository    = var.github_repository
-  create_oidc_provider = var.create_github_oidc_provider
-  state_bucket         = var.state_bucket
-  state_key            = var.state_key
-}

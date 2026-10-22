@@ -1,6 +1,6 @@
 # Toaletka: Architecture
 
-Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided. Sections marked _(proposal)_ are not yet agreed.
+Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account. Sections marked _(proposal)_ are not yet agreed.
 
 ## 1. Decisions so far
 
@@ -13,9 +13,9 @@ Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform 
 | Persistence            | DynamoDB                                                                |
 | Access protection      | Cognito user pool: one UI user (no self sign-up), M2M client for the sync job. X-API-Key stays until the code checks tokens |
 | Entry point            | CloudFront serves the UI at `/` and forwards `/api/*` to the Listings API. Route 53 custom domain optional |
-| Infrastructure as code | Terraform, one root with modules `common`, `frontend`, `listing_api`, `sync_job`, `github_ci` |
+| Infrastructure as code | Terraform, one root with modules `common`, `frontend`, `listing_api`, `sync_job` |
 | Environments           | `dev` and `prod`, each in its own AWS account of the organization, with its own state bucket |
-| CI/CD                  | GitHub Actions with AWS access over OIDC. Every deploy is plan, approval, apply |
+| CI/CD                  | GitHub Actions with AWS access over OIDC, one hand-made role `github-actions-<env>` per account. Every deploy is plan, approval, apply |
 | Alerting               | None in MVP. Only the last successful sync time is shown in the UI.     |
 
 ## 2. Components
@@ -102,9 +102,9 @@ Access: Cognito scopes `listings/read` and `listings/decide` (UI) and `listings/
 | `frontend`    | S3 bucket, CloudFront (OAC, `/api/*` behavior, prefix-stripping function), optional ACM + Route 53, Cognito UI client |
 | `listing_api` | ECR repository, Lightsail container service and deployment, IAM user for DynamoDB, API keys        |
 | `sync_job`    | ECR repository, Lambda (container image), EventBridge rule, Cognito M2M client, SSM secret |
-| `github_ci`   | GitHub OIDC provider (one per account), a read-only plan role and a deploy role                    |
 
-- Remote state in an S3 bucket per account, created by hand before the environment's first apply, with S3 native locking.
+- Remote state in an S3 bucket per account, created by hand before the environment's first apply, with S3 native locking (`terraform-state-s3-vt-dev`, `terraform-state-s3-vt-prod`).
+- CI access is outside Terraform: in each account the GitHub OIDC provider and the role `github-actions-<env>` are created by hand.
 - Terraform does not build code. Scripts in `scripts/` do:
   - `build-sync-image.ps1` and `build-api-image.ps1`: build and push the container images; the tag goes to Terraform.
   - `deploy-ui.ps1`: build React, upload to S3, invalidate CloudFront.
@@ -112,13 +112,13 @@ Access: Cognito scopes `listings/read` and `listings/decide` (UI) and `listings/
 - CI/CD (`.github/workflows/`, setup in `infra/README.md`):
   - Pull requests: Python lint, UI build, `terraform fmt` and `validate`. No AWS access.
   - A push to `master` deploys `dev`. A manual workflow deploys any ref to `dev` or `prod`.
-  - Each deploy assumes roles in the environment's own account (ARNs built from its tfvars). The plan job builds and pushes the images and plans with the read-only role. The apply job waits for approval on the GitHub environment, then applies that plan with the deploy role and uploads the UI.
-  - An environment's first deployment is local (`deploy.sh`), because it creates the CI roles and the ECR repositories.
+  - Each deploy assumes `github-actions-<env>` in the environment's own account (ARN built from its tfvars). The plan job builds and pushes the images (creating the ECR repositories on the first run) and plans. The apply job waits for approval on the GitHub environment, then applies that plan with the same role and uploads the UI.
+  - The role trusts this repository's `master` branch (plan job) and its GitHub environment (apply job). Since the role exists before Terraform runs, CI can deploy an empty account.
 
 ## 9. Risks specific to this architecture
 
 - **Lightsail is always on.** About $7/month (nano) per environment, so about $14/month for `dev` and `prod`, the largest fixed cost. Accepted for no cold starts.
-- **Deploy role can change itself.** The `github_ci` module is applied by the deploy role, so that role could widen its own policy. The real gate is the required reviewer on the GitHub environment. The plan artifact holds state values, secrets included, and is kept for one day.
+- **One broad CI role.** Plan and apply use the same role, so the plan job, which runs without approval on every push to `master`, has full deploy rights. The real gate is the required reviewer on the GitHub environment and branch protection on `master`. The role is hand-made, so it is not reviewed in code. The plan artifact holds state values, secrets included, and is kept for one day.
 - **AWS IP ranges.** Lambda requests come from data-center IPs, which OLX may challenge or block more often than a home connection. The spike must run from Lambda, not a laptop. Fallbacks: a small fetcher at home pushing data to AWS, or a fixed IP via NAT Gateway (costs much more than the rest of the stack and does not hide the data-center origin).
 - **JavaScript-rendered pages.** If OLX pages need a headless browser, Lambda packaging gets heavier. The spike will show whether this is needed.
 - **Silent failure.** With no alerting, a broken sync is noticed only by a stale timestamp in the UI.
@@ -133,5 +133,5 @@ Access: Cognito scopes `listings/read` and `listings/decide` (UI) and `listings/
 
 1. Run the spike from Lambda.
 2. Confirm the data model and sync flow against the spike results.
-3. Create the prod state bucket, deploy `dev` and `prod` once locally (`scripts/deploy.sh --env <env>`, signed in to that account, see `infra/README.md`), then set up the GitHub environments so CI takes over.
+3. `dev` has its state bucket, OIDC provider and `github-actions-dev` role; set up the GitHub environments and deploy it through CI. For `prod`, create the same by hand (`terraform-state-s3-vt-prod`, `github-actions-prod`), see `infra/README.md`.
 4. Validate Cognito tokens in the Listings API and use client credentials in the sync job; then drop `API_KEY` and `SYNC_API_KEY`.

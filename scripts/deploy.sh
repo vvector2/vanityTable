@@ -106,8 +106,6 @@ fi
 
 state_bucket="$(setting "$backend_file" bucket)"
 state_key="$(setting "$backend_file" key)"
-# modules/github_ci limits the CI roles to this environment's state.
-export TF_VAR_state_bucket="$state_bucket" TF_VAR_state_key="$state_key"
 
 step "Terraform init ($env: s3://$state_bucket/$state_key)"
 # -reconfigure: infra/.terraform may still point at the other environment's state.
@@ -142,7 +140,7 @@ build_images() {
   # so ask AWS rather than the state. A targeted apply creates only the ECR resources;
   # the image tags do not matter for it. The API repository policy is left to the full apply:
   # it names the Lightsail service's pull role, so targeting it would create Lightsail too.
-  # CI cannot do this (its plan role is read-only), so an environment's first deployment is local.
+  # CI runs this in the plan job (--yes), before the approval; it only adds empty repositories.
   if ! aws ecr describe-repositories --region "$region" \
       --repository-names "$name-listings-api" "$name-sync" >/dev/null 2>&1; then
     step "Creating the ECR repositories"

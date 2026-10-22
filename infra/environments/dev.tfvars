@@ -5,10 +5,6 @@ environment = "dev"
 aws_account_id = "090700103422"
 name           = "toaletka"
 
-github_repository = "vvector2/vanityTable"
-# One GitHub OIDC provider per account.
-create_github_oidc_provider = true
-
 sync_schedule_enabled = false
 olx_query             = "toaletki"
 

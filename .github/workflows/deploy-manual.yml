@@ -1,5 +1,5 @@
 # "Run workflow" button: deploys any branch, tag or SHA to dev or prod.
-# Start it from master (the default): the AWS roles trust only workflows running on master.
+# Start it from master (the default): the AWS role trusts only workflows running on master.
 name: Deploy (manual)
 
 on:
