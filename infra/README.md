@@ -59,8 +59,10 @@ Each account has its own OIDC provider and one role, `github-actions-<env>`, bot
 ### One-time setup
 
 1. Per account: the state bucket (above), an IAM OIDC identity provider for `https://token.actions.githubusercontent.com` with audience `sts.amazonaws.com`, and a role `github-actions-<env>` (`github-actions-dev` exists). Its trust policy allows `sts:AssumeRoleWithWebIdentity` from that provider with `aud` = `sts.amazonaws.com` and `sub` matching both:
-   - `repo:vvector2/vanityTable:ref:refs/heads/master` (plan job)
-   - `repo:vvector2/vanityTable:environment:<env>` (apply job, runs in the GitHub environment)
+   - `repo:vvector2@36629674/vanityTable@1423494022:ref:refs/heads/master` (plan job)
+   - `repo:vvector2@36629674/vanityTable@1423494022:environment:<env>` (apply job, runs in the GitHub environment)
+
+   GitHub puts the owner and repository IDs into `sub` (`owner@<id>/repo@<id>`), so a pattern like `repo:vvector2/vanityTable:*` never matches. CloudTrail's failed `AssumeRoleWithWebIdentity` events show the exact `sub` GitHub sent.
 
    Its permissions must cover the whole stack (for example `AdministratorAccess`) plus the state bucket. No GitHub variables or secrets are needed.
 2. Environments (Settings → Environments) `dev` and `prod`: add yourself as a required reviewer, and set deployment branches to `master` only.
