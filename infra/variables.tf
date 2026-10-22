@@ -3,10 +3,29 @@ variable "region" {
   default = "eu-central-1"
 }
 
+variable "environment" {
+  description = "dev or prod. Values per environment live in environments/<env>.tfvars."
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "prod"], var.environment)
+    error_message = "environment must be dev or prod."
+  }
+}
+
+variable "aws_account_id" {
+  description = "Account of this environment in the AWS organization. Terraform stops in any other account."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9]{12}$", var.aws_account_id))
+    error_message = "aws_account_id must be a 12-digit AWS account ID."
+  }
+}
+
 variable "name" {
   description = "Prefix for resource names."
   type        = string
-  default     = "toaletka"
 }
 
 # Frontend
@@ -76,4 +95,25 @@ variable "max_pages" {
     condition     = var.max_pages == null ? true : var.max_pages >= 1
     error_message = "max_pages must be at least 1, or null for all pages."
   }
+}
+
+# CI/CD (GitHub Actions)
+
+variable "github_repository" {
+  description = "owner/repo whose workflows may deploy this environment."
+  type        = string
+}
+
+variable "create_github_oidc_provider" {
+  description = "The GitHub OIDC provider exists once per account. False only if the account already has one."
+  type        = bool
+}
+
+# Set by scripts/deploy.sh from environments/<env>.s3.tfbackend; the CI roles may only touch this state.
+variable "state_bucket" {
+  type = string
+}
+
+variable "state_key" {
+  type = string
 }

@@ -1,0 +1,122 @@
+# The one deploy logic, called by deploy-dev.yml and deploy-manual.yml.
+# plan: builds and pushes the images and writes the Terraform plan (read-only role).
+# apply: waits for approval on the GitHub environment, then applies that exact plan
+# and deploys the UI (deploy role). Both halves are scripts/deploy.sh.
+# Setup (roles, environments): infra/README.md, section CI/CD.
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: dev or prod
+        type: string
+        required: true
+      ref:
+        description: Branch, tag or SHA to deploy. Empty deploys the commit that triggered the run.
+        type: string
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  # The apply must run the Terraform version that wrote the plan.
+  TERRAFORM_VERSION: 1.16.6
+  AWS_REGION: eu-central-1
+
+jobs:
+  plan:
+    name: Plan (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      plan_role: ${{ steps.source.outputs.plan_role }}
+      deploy_role: ${{ steps.source.outputs.deploy_role }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      # Each environment has its own AWS account, named in its tfvars. Role names come from
+      # modules/github_ci: <name>-github-plan and <name>-github-deploy.
+      - id: source
+        name: Resolve commit, account and roles
+        env:
+          VAR_FILE: infra/environments/${{ inputs.environment }}.tfvars
+        run: |
+          setting() { sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"\(.*\)\".*/\1/p" "$VAR_FILE" | head -n1; }
+          account="$(setting aws_account_id)"
+          name="$(setting name)"
+          [[ "$account" =~ ^[0-9]{12}$ && -n "$name" ]] || { echo "No aws_account_id or name in $VAR_FILE" >&2; exit 1; }
+          {
+            echo "sha=$(git rev-parse HEAD)"
+            echo "plan_role=arn:aws:iam::$account:role/$name-github-plan"
+            echo "deploy_role=arn:aws:iam::$account:role/$name-github-deploy"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          # The wrapper adds output around `terraform output -raw`, which deploy.sh reads.
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ steps.source.outputs.plan_role }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build images and plan
+        run: ./scripts/deploy.sh --env "${{ inputs.environment }}" --plan-only
+
+      - name: Plan summary
+        run: |
+          {
+            echo "### Terraform plan: ${{ inputs.environment }} at \`${{ steps.source.outputs.sha }}\`"
+            echo '```'
+            terraform -chdir=infra show -no-color tfplan | grep -E '^ *# |^Plan:|^No changes' || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The plan holds values from the state, secrets included; keep it briefly.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ inputs.environment }}
+          path: infra/tfplan
+          retention-days: 1
+
+  apply:
+    name: Apply (${{ inputs.environment }})
+    needs: plan
+    runs-on: ubuntu-latest
+    # Required reviewers on this environment make the job wait for approval.
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ needs.plan.outputs.deploy_role }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ inputs.environment }}
+          path: infra
+
+      - name: Apply and deploy the UI
+        run: ./scripts/deploy.sh --env "${{ inputs.environment }}" --apply-plan

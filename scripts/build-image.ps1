@@ -32,4 +32,4 @@ if ($Push) {
 }
 
 Write-Host "Image tag: $tag"
-Write-Host "Next: set $TagVariable = `"$tag`" in infra/terraform.tfvars, then terraform -chdir=infra apply"
+Write-Host "Next: terraform -chdir=infra apply -var-file=environments/<env>.tfvars -var $TagVariable=$tag (plus the other image's tag)"

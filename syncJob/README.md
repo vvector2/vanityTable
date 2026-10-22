@@ -29,9 +29,14 @@ curl -X POST http://localhost:9000/2015-03-31/functions/function/invocations -d 
 From the repository root, with Docker, Terraform >= 1.10 and the AWS CLI. Full stack setup: `infra/README.md`.
 
 ```
-./scripts/build-sync-image.ps1 -Push         # needs the ECR repo from the first apply in infra/README.md; prints the image tag
-# set sync_image_tag = "<tag>" in infra/terraform.tfvars (api_image_tag must be set there too)
-terraform -chdir=infra apply
+./scripts/deploy.sh --env dev                # builds and pushes both images, plans, asks, applies
+```
+
+Or by hand, with `infra/` initialized for the environment (`deploy.sh` does that):
+
+```
+./scripts/build-sync-image.ps1 -Push         # prints the image tag
+terraform -chdir=infra apply -var-file=environments/dev.tfvars -var sync_image_tag=<tag> -var api_image_tag=<running api tag>
 ```
 
 `LISTING_API_URL` is set by Terraform from the `listing_api` module, and stays empty (upload off) until the API has an image. The API key is not in the Lambda configuration: Terraform stores it in SSM and passes the parameter name in `LISTING_API_KEY_PARAMETER`.

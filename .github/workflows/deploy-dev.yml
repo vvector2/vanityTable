@@ -1,0 +1,20 @@
+# Every push to master deploys dev (after approval on the dev environment).
+name: Deploy dev
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    # Queues behind a running deploy instead of cancelling it mid-apply.
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: false
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: dev

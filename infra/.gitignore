@@ -3,3 +3,6 @@
 *.tfstate.*
 tfplan
 *.tfvars
+
+# Per-environment settings are tracked; ad-hoc tfvars are not.
+!environments/*.tfvars

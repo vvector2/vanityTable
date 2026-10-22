@@ -61,3 +61,13 @@ output "sync_output_bucket" {
 output "listings_table_name" {
   value = module.common.listings_table_name
 }
+
+# CI/CD
+
+output "github_plan_role_arn" {
+  value = module.github_ci.plan_role_arn
+}
+
+output "github_deploy_role_arn" {
+  value = module.github_ci.deploy_role_arn
+}

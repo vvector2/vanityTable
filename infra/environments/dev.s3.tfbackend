@@ -1,0 +1,3 @@
+# State bucket in the dev account, created by hand. Holds the stack that predates the split.
+bucket = "terraform-state-s3-vt-dev"
+key    = "toaletka/terraform.tfstate"

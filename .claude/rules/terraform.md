@@ -6,7 +6,7 @@ paths:
 
 # Terraform
 
-- One root module, one environment, split into a few files by concern (`dynamodb.tf`, `lambda.tf`, `api.tf`, `ui.tf`, `iam.tf`, ...).
+- One root module deployed as two environments (`dev`, `prod`): settings in `infra/environments/<env>.tfvars`, never in `terraform.tfvars`. Files split by concern (`dynamodb.tf`, `lambda.tf`, `api.tf`, `ui.tf`, `iam.tf`, ...).
 - Remote state lives in a manually created S3 bucket with S3 native locking. Never commit state files or `.terraform/`.
 - IAM is least privilege: each Lambda gets its own role scoped to the exact table, parameters and log group it uses.
 - DynamoDB uses `PAY_PER_REQUEST`.

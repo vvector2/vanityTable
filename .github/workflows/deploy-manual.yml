@@ -1,0 +1,30 @@
+# "Run workflow" button: deploys any branch, tag or SHA to dev or prod.
+# Start it from master (the default): the AWS roles trust only workflows running on master.
+name: Deploy (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment
+        type: choice
+        options: [dev, prod]
+        required: true
+      ref:
+        description: Branch, tag or SHA to deploy (empty = master)
+        type: string
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: ${{ inputs.environment }}
+      ref: ${{ inputs.ref }}
