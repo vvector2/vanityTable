@@ -3,8 +3,6 @@ import { createRoot } from "react-dom/client";
 import "@picocss/pico/css/pico.min.css";
 import App from "./App";
 import { ensureSignedIn } from "./auth";
-import { ListingsProvider } from "./state/ListingsContext";
-import { ScanProvider } from "./state/ScanContext";
 import "./index.css";
 
 const root = createRoot(document.getElementById("root")!);
@@ -15,11 +13,7 @@ ensureSignedIn()
     if (!user) return;
     root.render(
       <StrictMode>
-        <ListingsProvider>
-          <ScanProvider>
-            <App />
-          </ScanProvider>
-        </ListingsProvider>
+        <App />
       </StrictMode>,
     );
   })

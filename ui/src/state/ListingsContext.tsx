@@ -38,7 +38,8 @@ interface ListingsContextValue {
 
 const ListingsContext = createContext<ListingsContextValue | null>(null);
 
-export function ListingsProvider({ children }: { children: ReactNode }) {
+// Listings of one saved search; the provider is mounted per search page.
+export function ListingsProvider({ searchId, children }: { searchId: string; children: ReactNode }) {
   const [tab, setTabState] = useState<ListingStatus>("new");
   const [items, setItems] = useState<Listing[]>([]);
   const [counts, setCounts] = useState<Record<ListingStatus, number> | null>(null);
@@ -62,7 +63,7 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setLoadError(null);
 
-    fetchListings(tab, { signal: controller.signal })
+    fetchListings(searchId, tab, { signal: controller.signal })
       .then((page) => setItems(page.items))
       .catch((error: unknown) => {
         if (isCancel(error)) return;
@@ -74,12 +75,12 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       });
 
     return () => controller.abort();
-  }, [tab, reloadKey]);
+  }, [searchId, tab, reloadKey]);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchCounts(controller.signal)
+    fetchCounts(searchId, controller.signal)
       .then(setCounts)
       .catch((error: unknown) => {
         // Counts only feed the tab badges, so a failure keeps the last known counts.
@@ -87,7 +88,7 @@ export function ListingsProvider({ children }: { children: ReactNode }) {
       });
 
     return () => controller.abort();
-  }, [tab, reloadKey]);
+  }, [searchId, tab, reloadKey]);
 
   const decide = useCallback(
     async (olxId: string, status: ListingStatus) => {

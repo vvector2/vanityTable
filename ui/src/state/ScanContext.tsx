@@ -18,7 +18,6 @@ import {
   startScanJob,
   type ScanJob,
 } from "../api/scanJobs";
-import { useListings } from "./ListingsContext";
 
 // Id of the job this browser is following. Kept across reloads, so a closed and reopened
 // page still shows the result of a scan that ended while it was closed.
@@ -65,8 +64,14 @@ interface ScanContextValue {
 
 const ScanContext = createContext<ScanContextValue | null>(null);
 
-export function ScanProvider({ children }: { children: ReactNode }) {
-  const { reload } = useListings();
+// onNewResults: called when a newer successful scan finishes, so the page can reload its data.
+export function ScanProvider({
+  onNewResults,
+  children,
+}: {
+  onNewResults: () => void;
+  children: ReactNode;
+}) {
   const [job, setJob] = useState<ScanJob | null>(null);
   const [lastSuccessAt, setLastSuccessAt] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -83,11 +88,11 @@ export function ScanProvider({ children }: { children: ReactNode }) {
   // A newer successful scan means new listings may be in the table.
   const applyLastSuccess = useCallback(
     (at: string | null, refreshList: boolean) => {
-      if (at && at !== lastSuccessRef.current && refreshList) reload();
+      if (at && at !== lastSuccessRef.current && refreshList) onNewResults();
       lastSuccessRef.current = at;
       setLastSuccessAt(at);
     },
-    [reload],
+    [onNewResults],
   );
 
   // On load: keep waiting for an active job, or show how the followed job ended.
