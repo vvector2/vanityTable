@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Toaletka finder – Home (mockup)</title>
+<!--
+Static mockup of the Home page (Saved Searches feature, see SeachCriteria.Feature.md).
+Sample data only. One responsive page: widen the window for the desktop layout, narrow it for the phone layout.
+Fonts (Bricolage Grotesque, DM Sans) are loaded from Google Fonts under the SIL Open Font License 1.1.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&amp;family=DM+Sans:wght@400;500;700&amp;display=swap">
+<style>
+:root {
+  --ink: #1e2b2d; --muted: #5b6b6d; --line: #e4dfd8; --surface: #ffffff; --paper: #faf8f5;
+  --rose: #b23a5b; --rose-dark: #8c2644; --rose-soft: #fbeaee; --rose-line: #f0c9d3;
+  --ok: #2f8f6f; --ok-dark: #1b5a4a; --ok-soft: #e6f2ec;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: "DM Sans", system-ui, sans-serif; }
+a { color: var(--rose); } a:hover { color: var(--rose-dark); }
+
+.hdr { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 20px 40px 16px; border-bottom: 1px solid var(--line); }
+.brand { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 12px; }
+.logo { flex: none; width: 40px; height: 40px; border-radius: 12px; background: var(--rose); color: #fff; display: flex; align-items: center; justify-content: center; }
+.brand .name { font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1.1; }
+.brand .tag { margin-top: 2px; font-size: 14px; color: var(--muted); }
+.btn-out { font: inherit; font-size: 14px; padding: 8px 14px; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+
+main { width: 100%; max-width: 1120px; margin: 0 auto; padding: 48px 40px 72px; display: flex; flex-direction: column; gap: 32px; }
+.hero { width: 100%; max-width: 820px; margin: 0 auto; padding-top: 16px; display: flex; flex-direction: column; gap: 20px; }
+.hero label { font-family: var(--display); font-weight: 700; font-size: 52px; line-height: 1.05; text-align: center; }
+.hero textarea { width: 100%; min-height: 150px; padding: 20px 22px; font: inherit; font-size: 18px; line-height: 1.5; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 20px; resize: vertical; }
+.hero .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.hero .hint { margin: 0; flex: 1 1 320px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.btn-primary { flex: none; font: inherit; font-size: 16px; font-weight: 700; min-height: 48px; padding: 0 28px; border-radius: 12px; border: 0; background: var(--rose); color: #fff; cursor: pointer; }
+h2.sec { margin: 16px 0 -12px; font-family: var(--display); font-weight: 700; font-size: 24px; line-height: 1.2; }
+
+.cards { display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch; }
+.card { flex: 1 1 320px; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.card h3 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 22px; line-height: 1.2; }
+.badge { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--ok-dark); background: var(--ok-soft); border-radius: 999px; padding: 4px 10px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+.counts { display: flex; gap: 10px; }
+.count { flex: 1 1 0; min-width: 0; border-radius: 12px; padding: 12px 12px 10px; display: flex; flex-direction: column; gap: 2px; background: var(--paper); border: 1px solid var(--line); }
+.count .num { font-family: var(--display); font-weight: 700; font-size: 28px; line-height: 1; }
+.count .lbl { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.count.hl { background: var(--rose-soft); border-color: var(--rose-line); }
+.count.hl .num { color: var(--rose-dark); }
+.open { margin-top: auto; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 15px; text-decoration: none; min-height: 44px; }
+
+@media (max-width: 640px) {
+  .hdr { padding: 20px 16px 14px; gap: 12px; }
+  .brand .tag { display: none; }
+  main { padding: 28px 16px 40px; gap: 24px; }
+  .hero { padding-top: 0; gap: 14px; }
+  .hero label { font-size: 34px; text-align: left; }
+  .hero textarea { min-height: 140px; padding: 16px 18px; font-size: 16px; border-radius: 16px; }
+  .btn-primary { width: 100%; }
+  h2.sec { font-size: 22px; margin: 12px 0 -8px; }
+  .cards { flex-direction: column; gap: 16px; }
+  .card { flex: none; padding: 20px; gap: 16px; }
+  .card h3 { font-size: 20px; }
+  .counts { gap: 8px; }
+  .count { padding: 10px 10px 8px; }
+  .count .num { font-size: 26px; }
+  .count .lbl { font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<header class="hdr">
+  <div class="brand">
+    <div class="logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="9" rx="6" ry="7"/><path d="M6 21h12M12 16v5"/></svg>
+    </div>
+    <div>
+      <div class="name">Toaletka finder</div>
+      <div class="tag">Ogłoszenia z OLX, które pasują do Twoich kryteriów</div>
+    </div>
+  </div>
+  <button type="button" class="btn-out">Wyloguj</button>
+</header>
+
+<main>
+  <section class="hero">
+    <label for="query">Czego szukasz?</label>
+    <textarea id="query" rows="5" placeholder="Np. retro toaletka z lustrem, jasne drewno, do 600 zł, Warszawa i okolice"></textarea>
+    <div class="row">
+      <p class="hint">Opisz własnymi słowami, co, w jakiej cenie i gdzie. Jeśli czegoś zabraknie, dopytam.</p>
+      <button type="submit" class="btn-primary">Szukaj</button>
+    </div>
+  </section>
+
+  <h2 class="sec">Moje wyszukiwania</h2>
+
+  <div class="cards">
+      <article class="card">
+        <div class="card-top">
+          <h3>Toaletka retro</h3>
+          <span class="badge"><span class="dot"></span>Aktywne</span>
+        </div>
+        <div class="chips">
+          <span class="chip">toaletka</span>
+          <span class="chip">psyche</span>
+          <span class="chip">do 600 zł</span>
+          <span class="chip">Warszawa +30 km</span>
+        </div>
+        <div class="counts">
+          <div class="count hl"><span class="num">12</span><span class="lbl">Nowe</span></div>
+          <div class="count"><span class="num">3</span><span class="lbl">Zaakceptowane</span></div>
+          <div class="count"><span class="num">41</span><span class="lbl">Odrzucone</span></div>
+        </div>
+        <a class="open" href="#">Otwórz ogłoszenia
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </article>
+      <article class="card">
+        <div class="card-top">
+          <h3>Fotel uszak</h3>
+          <span class="badge"><span class="dot"></span>Aktywne</span>
+        </div>
+        <div class="chips">
+          <span class="chip">fotel uszak</span>
+          <span class="chip">fotel klubowy</span>
+          <span class="chip">100–400 zł</span>
+          <span class="chip">Kraków +20 km</span>
+        </div>
+        <div class="counts">
+          <div class="count hl"><span class="num">4</span><span class="lbl">Nowe</span></div>
+          <div class="count"><span class="num">1</span><span class="lbl">Zaakceptowane</span></div>
+          <div class="count"><span class="num">17</span><span class="lbl">Odrzucone</span></div>
+        </div>
+        <a class="open" href="#">Otwórz ogłoszenia
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </article>
+      <article class="card">
+        <div class="card-top">
+          <h3>Rower holenderski</h3>
+          <span class="badge"><span class="dot"></span>Aktywne</span>
+        </div>
+        <div class="chips">
+          <span class="chip">rower holenderski</span>
+          <span class="chip">omafiets</span>
+          <span class="chip">do 900 zł</span>
+        </div>
+        <div class="counts">
+          <div class="count"><span class="num">0</span><span class="lbl">Nowe</span></div>
+          <div class="count"><span class="num">2</span><span class="lbl">Zaakceptowane</span></div>
+          <div class="count"><span class="num">9</span><span class="lbl">Odrzucone</span></div>
+        </div>
+        <a class="open" href="#">Otwórz ogłoszenia
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      </article>
+  </div>
+</main>
+</body>
+</html>
