@@ -62,18 +62,25 @@ function toListing(dto: ListingDto): Listing {
 }
 
 export async function fetchListings(
+  searchId: string,
   status: ListingStatus,
   { page = 1, pageSize = 50, signal }: { page?: number; pageSize?: number; signal?: AbortSignal } = {},
 ): Promise<ListingsPage> {
   const { data } = await apiClient.get<ListingsPageDto>("/listings", {
-    params: { status: TO_API[status], page, pageSize },
+    params: { searchId, status: TO_API[status], page, pageSize },
     signal,
   });
   return { items: data.items.map(toListing), totalItems: data.totalItems };
 }
 
-export async function fetchCounts(signal?: AbortSignal): Promise<Record<ListingStatus, number>> {
-  const { data } = await apiClient.get<ListingCountsDto>("/listings/counts", { signal });
+export async function fetchCounts(
+  searchId: string,
+  signal?: AbortSignal,
+): Promise<Record<ListingStatus, number>> {
+  const { data } = await apiClient.get<ListingCountsDto>("/listings/counts", {
+    params: { searchId },
+    signal,
+  });
   return { new: data.new, accepted: data.saved, rejected: data.rejected };
 }
 

@@ -1,44 +1,13 @@
-import ErrorBanner from "./components/ErrorBanner";
-import Header from "./components/Header";
-import ListingGrid from "./components/ListingGrid";
-import ScanBanner from "./components/ScanBanner";
-import ReviewView from "./components/ReviewView";
-import StatusTabs from "./components/StatusTabs";
-import { useListings } from "./state/ListingsContext";
-
-function TabContent() {
-  const { tab, loading, loadError, reload } = useListings();
-
-  if (loadError) {
-    return (
-      <div className="empty-state card-surface load-error" role="alert">
-        <p>Nie udało się wczytać ogłoszeń. {loadError}</p>
-        <button type="button" className="btn-pager btn-retry" onClick={reload}>
-          Spróbuj ponownie
-        </button>
-      </div>
-    );
-  }
-  if (loading) {
-    return (
-      <p className="empty-state" aria-busy="true">
-        Wczytywanie ogłoszeń…
-      </p>
-    );
-  }
-  return tab === "new" ? <ReviewView /> : <ListingGrid status={tab} />;
-}
+import HomePage from "./page/HomePage";
+import SearchPage from "./page/SearchPage";
+import { useRoute } from "./router";
 
 export default function App() {
-  return (
-    <div className="app">
-      <Header />
-      <ScanBanner />
-      <main className="app-main">
-        <StatusTabs />
-        <ErrorBanner />
-        <TabContent />
-      </main>
-    </div>
+  const route = useRoute();
+  // Keyed by search, so switching searches starts again on the "Nowe" tab.
+  return route.page === "search" ? (
+    <SearchPage key={route.searchId} searchId={route.searchId} />
+  ) : (
+    <HomePage />
   );
 }

@@ -1,5 +1,5 @@
+import type { ReactNode } from "react";
 import { signOut } from "../auth";
-import ScanControl from "./ScanControl";
 
 function MirrorIcon() {
   return (
@@ -20,19 +20,20 @@ function MirrorIcon() {
   );
 }
 
-export default function Header() {
+// children: page controls shown between the brand and the sign-out button.
+export default function Header({ children }: { children?: ReactNode }) {
   return (
     <header className="app-header">
-      <div className="brand">
+      <a className="brand" href="#/">
         <div className="brand-logo">
           <MirrorIcon />
         </div>
         <div>
           <h1>Toaletka finder</h1>
-          <p className="brand-tagline">Retro i vintage toaletki z OLX</p>
+          <p className="brand-tagline">Ogłoszenia z OLX, które pasują do Twoich kryteriów</p>
         </div>
-      </div>
-      <ScanControl />
+      </a>
+      {children}
       <button type="button" className="btn-sign-out" onClick={() => void signOut()}>
         Wyloguj
       </button>
