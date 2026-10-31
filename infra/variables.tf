@@ -96,3 +96,14 @@ variable "max_pages" {
     error_message = "max_pages must be at least 1, or null for all pages."
   }
 }
+
+variable "sync_log_retention_days" {
+  description = "Days the sync Lambda's CloudWatch logs are kept. CloudWatch has no size cap, so retention is what bounds the stored volume."
+  type        = number
+  default     = 14
+
+  validation {
+    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90], var.sync_log_retention_days)
+    error_message = "sync_log_retention_days must be one of 1, 3, 5, 7, 14, 30, 60 or 90."
+  }
+}

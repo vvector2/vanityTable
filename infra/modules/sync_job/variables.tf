@@ -25,6 +25,11 @@ variable "max_pages" {
   type        = number
 }
 
+variable "log_retention_days" {
+  description = "Days the Lambda's CloudWatch logs are kept."
+  type        = number
+}
+
 variable "listing_api_url" {
   description = "Base URL of the Listings API. Empty turns the upload off."
   type        = string

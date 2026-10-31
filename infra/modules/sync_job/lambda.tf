@@ -3,9 +3,10 @@ locals {
   deploy = var.image_tag != "" ? 1 : 0
 }
 
+# Created here, not by Lambda on first run, so retention applies and destroy removes it.
 resource "aws_cloudwatch_log_group" "sync" {
   name              = "/aws/lambda/${var.function_name}"
-  retention_in_days = 14
+  retention_in_days = var.log_retention_days
 }
 
 resource "aws_lambda_function" "sync" {
@@ -18,6 +19,12 @@ resource "aws_lambda_function" "sync" {
   # Chromium needs memory; a full run is ~25 pages with a 0.5-1 s pause between them.
   memory_size = 2048
   timeout     = 900
+
+  logging_config {
+    # JSON lines carry level, logger and request id, so Logs Insights can filter on them.
+    log_format = "JSON"
+    log_group  = aws_cloudwatch_log_group.sync.name
+  }
 
   environment {
     variables = {

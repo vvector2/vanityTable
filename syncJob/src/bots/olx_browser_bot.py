@@ -149,7 +149,11 @@ def safe(read: Callable[[], Any]) -> Any:
 
 
 def log_failed_response(page: Page, url: str, response: Response, elapsed: float) -> None:
-    """Logs what OLX (or a filter in front of it) sent back, as one JSON line for CloudWatch Insights."""
+    """Logs what OLX (or a filter in front of it) sent back.
+
+    The details go in the `response` field of the Lambda's JSON log line, so CloudWatch Insights
+    can filter on them (e.g. `response.status`). Plain-text logs (local runs) show only the message.
+    """
     headers = safe(response.all_headers)
     if isinstance(headers, dict) and "set-cookie" in headers:
         # Cookie values are not needed to tell a block apart; their names are.
@@ -172,7 +176,9 @@ def log_failed_response(page: Page, url: str, response: Response, elapsed: float
         "body_length": len(body),
         "body_start": re.sub(r"\s+", " ", body[:ERROR_BODY_CHARS]),
     }
-    logger.warning("Failed response: %s", json.dumps(details, ensure_ascii=False, default=str))
+    logger.warning(
+        "Failed response: HTTP %d, title %r on %s", response.status, details["title"], url, extra={"response": details}
+    )
 
 
 def load_results_page(page: Page, url: str) -> dict[str, Any]:
