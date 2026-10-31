@@ -1,7 +1,7 @@
 import { isAxiosError } from "axios";
 import { apiClient, errorMessage } from "./client";
 
-// Wire format of the scan-job endpoints (listingApi/app/models.py, ScanJobDto and LatestScanDto).
+// Wire format of the scan-job endpoints (listingApi/app/dto/scan_jobs.py, ScanJobDto and LatestScanDto).
 export type ScanJobStatus = "created" | "running" | "succeeded" | "failed";
 
 export interface ScanJob {
@@ -19,7 +19,7 @@ export interface LatestScan {
   activeJob: ScanJob | null;
 }
 
-// Error the API reports for a job still created or running after 15 minutes (app/scan_jobs.py).
+// Error the API reports for a job still created or running after 15 minutes (listingApi/app/core/scan_job.py).
 export const TIMED_OUT_ERROR = "No result within 15 minutes";
 
 export function isActive(job: ScanJob): boolean {
