@@ -34,7 +34,10 @@ from bots.olx_browser_bot import PAGE_ATTEMPTS, RETRY_MAX_WAIT_SECONDS, scrape
 SOURCE = "olx"
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+# On AWS the runtime sets the level from the function's application_log_level
+# (AWS_LAMBDA_LOG_LEVEL, JSON log format only); elsewhere default to INFO.
+if not os.environ.get("AWS_LAMBDA_LOG_LEVEL"):
+    logger.setLevel(logging.INFO)
 
 
 @dataclass(frozen=True)

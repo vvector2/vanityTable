@@ -48,12 +48,13 @@ module "frontend" {
 module "sync_job" {
   source = "./modules/sync_job"
 
-  name             = var.name
-  function_name    = local.sync_function_name
-  image_tag        = var.sync_image_tag
-  schedule_enabled = var.sync_schedule_enabled
-  olx_query        = var.olx_query
-  max_pages        = var.max_pages
+  name               = var.name
+  function_name      = local.sync_function_name
+  image_tag          = var.sync_image_tag
+  schedule_enabled   = var.sync_schedule_enabled
+  olx_query          = var.olx_query
+  max_pages          = var.max_pages
+  log_retention_days = var.sync_log_retention_days
   # Upload stays off until the API has a deployment to receive it.
   listing_api_url       = var.api_image_tag == "" ? "" : module.listing_api.url
   cognito_user_pool_id  = module.common.cognito_user_pool_id
