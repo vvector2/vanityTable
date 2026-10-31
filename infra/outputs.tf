@@ -33,6 +33,14 @@ output "listings_scope_prefix" {
   value = module.common.listings_scope_prefix
 }
 
+output "searches_scope_prefix" {
+  value = module.common.searches_scope_prefix
+}
+
+output "searches_table_name" {
+  value = module.common.searches_table_name
+}
+
 output "cognito_admin_client_id" {
   value = module.common.cognito_admin_client_id
 }

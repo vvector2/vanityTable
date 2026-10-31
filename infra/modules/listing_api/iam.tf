@@ -11,12 +11,16 @@ data "aws_iam_policy_document" "api" {
       "dynamodb:UpdateItem",
       "dynamodb:PutItem",
       "dynamodb:DeleteItem",
+      # DELETE /searches/{id} removes the search's listings in batches.
+      "dynamodb:BatchWriteItem",
     ]
     resources = [
       var.listings_table_arn,
       "${var.listings_table_arn}/index/*",
       var.scan_jobs_table_arn,
       "${var.scan_jobs_table_arn}/index/*",
+      var.searches_table_arn,
+      "${var.searches_table_arn}/index/*",
     ]
   }
 

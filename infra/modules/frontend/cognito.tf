@@ -18,6 +18,8 @@ resource "aws_cognito_user_pool_client" "ui" {
     "email",
     "${var.listings_scope_prefix}/read",
     "${var.listings_scope_prefix}/decide",
+    "${var.searches_scope_prefix}/read",
+    "${var.searches_scope_prefix}/write",
   ]
   supported_identity_providers  = ["COGNITO"]
   callback_urls                 = local.app_urls

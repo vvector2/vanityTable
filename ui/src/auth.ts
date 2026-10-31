@@ -10,7 +10,7 @@ export const userManager = new UserManager({
   redirect_uri: appUrl,
   post_logout_redirect_uri: appUrl,
   response_type: "code",
-  scope: "openid email listings/read listings/decide",
+  scope: "openid email listings/read listings/decide searches/read searches/write",
   // Renews the access token with the refresh token before it expires.
   automaticSilentRenew: true,
 });

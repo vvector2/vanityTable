@@ -25,12 +25,14 @@ resource "aws_lightsail_container_service_deployment_version" "api" {
       AWS_ACCESS_KEY_ID     = aws_iam_access_key.api.id
       AWS_SECRET_ACCESS_KEY = aws_iam_access_key.api.secret
       SCAN_JOBS_TABLE_NAME  = var.scan_jobs_table_name
+      SEARCHES_TABLE_NAME   = var.searches_table_name
       SCAN_FUNCTION_NAME    = var.sync_function_name
       # The UI calls the API through CloudFront on its own origin, so CORS stays off.
       ALLOWED_ORIGINS = ""
       # Every endpoint but /health needs a Cognito access token from this pool.
-      COGNITO_ISSUER       = var.cognito_issuer
-      COGNITO_SCOPE_PREFIX = var.listings_scope_prefix
+      COGNITO_ISSUER                = var.cognito_issuer
+      COGNITO_SCOPE_PREFIX          = var.listings_scope_prefix
+      COGNITO_SEARCHES_SCOPE_PREFIX = var.searches_scope_prefix
     }
 
     ports = {

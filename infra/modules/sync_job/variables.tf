@@ -51,3 +51,7 @@ variable "cognito_token_url" {
 variable "listings_scope_prefix" {
   type = string
 }
+
+variable "searches_scope_prefix" {
+  type = string
+}

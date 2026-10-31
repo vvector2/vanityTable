@@ -35,11 +35,11 @@ resource "aws_lambda_function" "sync" {
       PAGE_DELAY_SECONDS = tostring(var.page_delay_seconds)
       # An empty URL turns the upload to the Listings API off.
       LISTING_API_URL = var.listing_api_url
-      # Client credentials for the Listings API (scope listings/create).
+      # Client credentials for the Listings API (scopes listings/create and searches/read).
       COGNITO_TOKEN_URL               = var.cognito_token_url
       COGNITO_CLIENT_ID               = aws_cognito_user_pool_client.sync.id
       COGNITO_CLIENT_SECRET_PARAMETER = aws_ssm_parameter.sync_client_secret.name
-      COGNITO_SCOPE                   = "${var.listings_scope_prefix}/create"
+      COGNITO_SCOPE                   = "${var.listings_scope_prefix}/create ${var.searches_scope_prefix}/read"
     }
   }
 

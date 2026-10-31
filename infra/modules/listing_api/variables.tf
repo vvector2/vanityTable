@@ -44,3 +44,15 @@ variable "cognito_issuer" {
 variable "listings_scope_prefix" {
   type = string
 }
+
+variable "searches_table_name" {
+  type = string
+}
+
+variable "searches_table_arn" {
+  type = string
+}
+
+variable "searches_scope_prefix" {
+  type = string
+}

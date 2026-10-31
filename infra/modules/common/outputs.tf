@@ -32,6 +32,11 @@ output "listings_scope_prefix" {
   value       = aws_cognito_resource_server.listings.identifier
 }
 
+output "searches_scope_prefix" {
+  description = "Resource server identifier; scopes are <prefix>/read and /write."
+  value       = aws_cognito_resource_server.searches.identifier
+}
+
 output "cognito_admin_client_id" {
   value = aws_cognito_user_pool_client.admin.id
 }
@@ -47,4 +52,12 @@ output "scan_jobs_table_name" {
 
 output "scan_jobs_table_arn" {
   value = aws_dynamodb_table.scan_jobs.arn
+}
+
+output "searches_table_name" {
+  value = aws_dynamodb_table.searches.name
+}
+
+output "searches_table_arn" {
+  value = aws_dynamodb_table.searches.arn
 }

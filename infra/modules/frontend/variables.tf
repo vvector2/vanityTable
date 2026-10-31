@@ -23,6 +23,10 @@ variable "listings_scope_prefix" {
   type = string
 }
 
+variable "searches_scope_prefix" {
+  type = string
+}
+
 variable "dev_callback_urls" {
   type = list(string)
 }

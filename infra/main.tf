@@ -24,9 +24,12 @@ module "listing_api" {
   listings_table_arn    = module.common.listings_table_arn
   scan_jobs_table_name  = module.common.scan_jobs_table_name
   scan_jobs_table_arn   = module.common.scan_jobs_table_arn
+  searches_table_name   = module.common.searches_table_name
+  searches_table_arn    = module.common.searches_table_arn
   sync_function_name    = local.sync_function_name
   cognito_issuer        = module.common.cognito_issuer
   listings_scope_prefix = module.common.listings_scope_prefix
+  searches_scope_prefix = module.common.searches_scope_prefix
 }
 
 module "frontend" {
@@ -42,6 +45,7 @@ module "frontend" {
   api_origin_domain     = module.listing_api.origin_domain
   cognito_user_pool_id  = module.common.cognito_user_pool_id
   listings_scope_prefix = module.common.listings_scope_prefix
+  searches_scope_prefix = module.common.searches_scope_prefix
   dev_callback_urls     = var.dev_callback_urls
 }
 
@@ -61,4 +65,5 @@ module "sync_job" {
   cognito_user_pool_id  = module.common.cognito_user_pool_id
   cognito_token_url     = module.common.cognito_token_url
   listings_scope_prefix = module.common.listings_scope_prefix
+  searches_scope_prefix = module.common.searches_scope_prefix
 }

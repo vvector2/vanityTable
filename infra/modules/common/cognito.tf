@@ -68,6 +68,24 @@ resource "aws_cognito_resource_server" "listings" {
   }
 }
 
+# Second resource server for /searches (docs/llstingApi.md, section Auth): read for the UI and
+# the sync job, write for the UI.
+resource "aws_cognito_resource_server" "searches" {
+  user_pool_id = aws_cognito_user_pool.main.id
+  identifier   = "searches"
+  name         = "Searches API"
+
+  scope {
+    scope_name        = "read"
+    scope_description = "List and view saved searches"
+  }
+
+  scope {
+    scope_name        = "write"
+    scope_description = "Create and delete saved searches"
+  }
+}
+
 # Machine client for admin calls (DELETE /listings/{id}): client credentials, admin scope only.
 # Get a token with scripts/local/admin-token.ps1.
 resource "aws_cognito_user_pool_client" "admin" {

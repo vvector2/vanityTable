@@ -1,4 +1,4 @@
-# Machine client for the sync job: client credentials flow, may only create listings.
+# Machine client for the sync job: client credentials flow, may create listings and read searches.
 resource "aws_cognito_user_pool_client" "sync" {
   name         = "${var.name}-sync"
   user_pool_id = var.cognito_user_pool_id
@@ -6,7 +6,7 @@ resource "aws_cognito_user_pool_client" "sync" {
   generate_secret                      = true
   allowed_oauth_flows_user_pool_client = true
   allowed_oauth_flows                  = ["client_credentials"]
-  allowed_oauth_scopes                 = ["${var.listings_scope_prefix}/create"]
+  allowed_oauth_scopes                 = ["${var.listings_scope_prefix}/create", "${var.searches_scope_prefix}/read"]
   supported_identity_providers         = ["COGNITO"]
   explicit_auth_flows                  = ["ALLOW_REFRESH_TOKEN_AUTH"]
   prevent_user_existence_errors        = "ENABLED"
