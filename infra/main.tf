@@ -54,6 +54,7 @@ module "sync_job" {
   schedule_enabled   = var.sync_schedule_enabled
   olx_query          = var.olx_query
   max_pages          = var.max_pages
+  page_delay_seconds = var.page_delay_seconds
   log_retention_days = var.sync_log_retention_days
   # Upload stays off until the API has a deployment to receive it.
   listing_api_url       = var.api_image_tag == "" ? "" : module.listing_api.url

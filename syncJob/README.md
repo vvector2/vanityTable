@@ -70,9 +70,9 @@ The 30-minute schedule is on in `prod` and off in `dev`, set by `sync_schedule_e
 | ----------- | -------------------- | ---------- |
 | `query`     | `OLX_QUERY`          | `toaletki` |
 | `max_pages` | `MAX_PAGES`          | all pages  |
-| `delay`     | `PAGE_DELAY_SECONDS` | `0.5` (plus a random 0 to 0.5 s) |
+| `delay`     | `PAGE_DELAY_SECONDS` | `15` (plus a random 0 to 5 s) |
 | `attempts`  | `PAGE_ATTEMPTS`      | `3` (loads per page on 403, 5xx, timeout or network error) |
-| `retry_max_wait` | `PAGE_RETRY_MAX_WAIT_SECONDS` | `10` (a failed page is loaded again after a random 2 to 10 s) |
+| `retry_max_wait` | `PAGE_RETRY_MAX_WAIT_SECONDS` | `60` (a failed page is loaded again after a random 30 to 60 s) |
 
 A 429 or a captcha stops the run at once. Every failed response is logged as one `Failed response: {...}` JSON line (status, final URL, redirects, headers with cookie names only, page title, start of the body). In CloudWatch Logs Insights: `filter @message like /Failed response/`.
 

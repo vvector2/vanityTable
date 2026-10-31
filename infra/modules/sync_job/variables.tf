@@ -25,6 +25,11 @@ variable "max_pages" {
   type        = number
 }
 
+variable "page_delay_seconds" {
+  description = "Seconds between OLX results pages, plus a random 0 to 5 s."
+  type        = number
+}
+
 variable "log_retention_days" {
   description = "Days the Lambda's CloudWatch logs are kept."
   type        = number

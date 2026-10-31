@@ -97,6 +97,17 @@ variable "max_pages" {
   }
 }
 
+variable "page_delay_seconds" {
+  description = "Seconds between OLX results pages, plus a random 0 to 5 s. At 0.5-1 s OLX answered 403 after ~6 pages."
+  type        = number
+  default     = 15
+
+  validation {
+    condition     = var.page_delay_seconds >= 0
+    error_message = "page_delay_seconds must not be negative."
+  }
+}
+
 variable "sync_log_retention_days" {
   description = "Days the sync Lambda's CloudWatch logs are kept. CloudWatch has no size cap, so retention is what bounds the stored volume."
   type        = number

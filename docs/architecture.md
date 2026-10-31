@@ -1,6 +1,6 @@
 # Toaletka: Architecture
 
-Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account; local and CI scripts split (`scripts/local`, `scripts/ci`); all API calls use Cognito tokens (API keys removed); failed OLX pages are retried (403, 5xx, timeouts; not 429 or captcha). Sections marked _(proposal)_ are not yet agreed.
+Date: 2026-10-31 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account; local and CI scripts split (`scripts/local`, `scripts/ci`); all API calls use Cognito tokens (API keys removed); failed OLX pages are retried after 30 to 60 s (403, 5xx, timeouts; not 429 or captcha) and results pages are about 15 s apart, after OLX blocked faster paging. Sections marked _(proposal)_ are not yet agreed.
 
 ## 1. Decisions so far
 
@@ -72,10 +72,10 @@ Still open _(proposal, not in the table yet)_: `match_score`, `expired`, `last_s
 
 Failure rules:
 
-- Captcha or HTTP 429 stops the run at once. HTTP 403, 5xx, a timeout or a network error reloads the same page after a random wait of at most 10 s, up to 3 attempts in all (`PAGE_ATTEMPTS`, `PAGE_RETRY_MAX_WAIT_SECONDS`); if the last attempt fails, the run stops. A stopped run marks nothing expired, touches no decisions and does not update `last_success_at`.
+- Captcha or HTTP 429 stops the run at once. HTTP 403, 5xx, a timeout or a network error reloads the same page after a random wait of 30 to 60 s, up to 3 attempts in all (`PAGE_ATTEMPTS`, `PAGE_RETRY_MAX_WAIT_SECONDS`); if the last attempt fails, the run stops. A stopped run marks nothing expired, touches no decisions and does not update `last_success_at`.
 - The run is never restarted from the first page, and blocks are never circumvented.
 - Every failed response is logged with its status, headers, title and the start of its body, to tell a bot filter from an outage.
-- Fetch rules: one request stream, reasonable User-Agent, no parallelism.
+- Fetch rules: one request stream, reasonable User-Agent, no parallelism, results pages about 15 s apart plus a random 0 to 5 s (`PAGE_DELAY_SECONDS`, Terraform `page_delay_seconds`). At 0.5 to 1 s apart, OLX's CloudFront answered 403 after about 6 pages.
 
 ## 6. Matching logic
 

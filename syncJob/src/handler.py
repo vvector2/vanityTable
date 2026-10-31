@@ -10,11 +10,11 @@ Criteria and expiry come later.
 Event fields (all optional, fall back to environment variables):
 - query       OLX search query (OLX_QUERY, default "toaletki")
 - max_pages   stop after this many pages (MAX_PAGES, default: all pages)
-- delay       seconds between pages, plus 0-0.5 s random (PAGE_DELAY_SECONDS, default 0.5)
+- delay       seconds between pages, plus 0-5 s random (PAGE_DELAY_SECONDS, default 15)
 - job_id      scan job to report on (set by POST /scan-job); other runs report under a new id
 - attempts        loads per page on 403, 5xx, timeout or network error (PAGE_ATTEMPTS, default 3)
 - retry_max_wait  longest random wait in seconds before loading a page again
-                  (PAGE_RETRY_MAX_WAIT_SECONDS, default 10)
+                  (PAGE_RETRY_MAX_WAIT_SECONDS, default 60)
 
 The run reports `running` and then `succeeded` or `failed` to the Listings API
 (PUT /scan-job/{id}), so the UI can show the last successful scan.
@@ -29,7 +29,7 @@ from typing import Any
 from api.cognito_token import TokenProvider
 from api.listing_api_client import ListingApiClient
 from api.listing_upload import upload_listings
-from bots.olx_browser_bot import PAGE_ATTEMPTS, RETRY_MAX_WAIT_SECONDS, scrape
+from bots.olx_browser_bot import PAGE_ATTEMPTS, PAGE_DELAY_SECONDS, RETRY_MAX_WAIT_SECONDS, scrape
 
 SOURCE = "olx"
 
@@ -57,7 +57,7 @@ def read_settings(event: dict[str, Any]) -> Settings:
     max_pages = setting("max_pages", "MAX_PAGES")
     return Settings(
         query=setting("query", "OLX_QUERY", "toaletki"),
-        delay=float(setting("delay", "PAGE_DELAY_SECONDS", 0.5)),
+        delay=float(setting("delay", "PAGE_DELAY_SECONDS", PAGE_DELAY_SECONDS)),
         max_pages=int(max_pages) if max_pages else None,
         attempts=int(setting("attempts", "PAGE_ATTEMPTS", PAGE_ATTEMPTS)),
         retry_max_wait=float(setting("retry_max_wait", "PAGE_RETRY_MAX_WAIT_SECONDS", RETRY_MAX_WAIT_SECONDS)),

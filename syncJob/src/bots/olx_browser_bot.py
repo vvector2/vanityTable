@@ -9,10 +9,11 @@ embeds in `window.__PRERENDERED_STATE__`. Each ad is normalized to the adapter
 contract in docs/architecture.md (section 3) plus a few non-personal extras.
 
 Fetching rules (.claude/rules/olx-adapter.md):
-- one page at a time, with a short randomized pause between pages
+- one page at a time, with a randomized pause of about 15 s between pages, so a
+  rate-based filter in front of OLX is not tripped (it was at 0.5-1 s, after ~6 pages)
 - an honest User-Agent
 - stop on HTTP 429 or captcha; no retries
-- on HTTP 403, 5xx, a timeout or a network error, wait a random few seconds and reload
+- on HTTP 403, 5xx, a timeout or a network error, wait a random 30 to 60 s and reload
   the same page, up to a few attempts; then stop
 - seller data (user, contact, map coordinates) is never stored
 
@@ -45,14 +46,17 @@ USER_AGENT = "ToaletkaBot/0.1 (private, non-commercial listing watcher; Playwrig
 BLOCKED_RESOURCES = {"image", "media", "font"}
 CAPTCHA_MARKERS = ("captcha", "cf-challenge", "are you a robot", "jestes robotem", "jesteś robotem")
 STATE_VAR = "window.__PRERENDERED_STATE__"
-# Added to the configured page delay: a random 0 to 0.5 s, so page loads are not evenly spaced.
-PAGE_DELAY_JITTER_SECONDS = 0.5
+# Pause between results pages. At 0.5-1 s OLX's edge returned 403 after ~6 pages.
+PAGE_DELAY_SECONDS = 15.0
+# Added to the configured page delay: a random 0 to 5 s, so page loads are not evenly spaced.
+PAGE_DELAY_JITTER_SECONDS = 5.0
 # Lambda has no user namespaces, a tiny /dev/shm and no GPU, so Chromium needs these flags there.
 LAMBDA_CHROMIUM_ARGS = ["--no-sandbox", "--no-zygote", "--single-process", "--disable-gpu", "--disable-dev-shm-usage"]
 # A failed page is loaded again after a random wait in this range, up to PAGE_ATTEMPTS times in all.
+# The wait is long so a rate-based block has time to cool down.
 PAGE_ATTEMPTS = 3
-RETRY_MIN_WAIT_SECONDS = 2.0
-RETRY_MAX_WAIT_SECONDS = 10.0
+RETRY_MIN_WAIT_SECONDS = 30.0
+RETRY_MAX_WAIT_SECONDS = 60.0
 # Worth another attempt: a bot filter or a short outage, not a request to slow down.
 RETRYABLE_STATUSES = {403} | set(range(500, 600))
 # How much of a failed response goes to the log.
@@ -333,7 +337,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--query", default="toaletki", help="OLX search query (default: toaletki)")
     parser.add_argument(
-        "--delay", type=float, default=0.5, help="seconds to wait between pages, plus 0-0.5 s random (default: 0.5)"
+        "--delay",
+        type=float,
+        default=PAGE_DELAY_SECONDS,
+        help=f"seconds to wait between pages, plus 0-{PAGE_DELAY_JITTER_SECONDS:g} s random (default: {PAGE_DELAY_SECONDS:g})",
     )
     parser.add_argument("--max-pages", type=int, default=None, help="stop after this many pages")
     parser.add_argument("--headed", action="store_true", help="show the browser window")

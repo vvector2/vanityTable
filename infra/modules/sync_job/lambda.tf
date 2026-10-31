@@ -16,7 +16,7 @@ resource "aws_lambda_function" "sync" {
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.sync.repository_url}:${var.image_tag}"
   architectures = ["x86_64"]
-  # Chromium needs memory; a full run is ~25 pages with a 0.5-1 s pause between them.
+  # Chromium needs memory; a full run is up to 25 pages with a 15-20 s pause between them (~7.5 min).
   memory_size = 2048
   timeout     = 900
 
@@ -31,6 +31,8 @@ resource "aws_lambda_function" "sync" {
       OLX_QUERY = var.olx_query
       # The sync code reads an empty MAX_PAGES as all pages.
       MAX_PAGES = var.max_pages == null ? "" : tostring(var.max_pages)
+      # Pause between results pages; too short and OLX's edge answers 403.
+      PAGE_DELAY_SECONDS = tostring(var.page_delay_seconds)
       # An empty URL turns the upload to the Listings API off.
       LISTING_API_URL = var.listing_api_url
       # Client credentials for the Listings API (scope listings/create).
