@@ -62,7 +62,7 @@ Invoke by hand; the result (pages fetched, listing count, upload summary) is in 
 aws lambda invoke --function-name toaletka-sync --cli-binary-format raw-in-base64-out --payload '{"max_pages": 1}' out.json
 ```
 
-The 30-minute schedule exists but is off. Turn it on with `-var sync_schedule_enabled=true`.
+The 30-minute schedule is on in `prod` and off in `dev`, set by `sync_schedule_enabled` in `infra/environments/<env>.tfvars`.
 
 ## Event and settings
 

@@ -75,7 +75,7 @@ variable "sync_image_tag" {
 }
 
 variable "sync_schedule_enabled" {
-  description = "Run the sync every 30 minutes. Off during the spike; invoke by hand instead."
+  description = "Run the sync every 30 minutes. On in prod, off in dev (scans start from the UI or by hand)."
   type        = bool
   default     = false
 }

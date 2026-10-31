@@ -5,7 +5,8 @@ environment = "prod"
 aws_account_id = "231112632464"
 name           = "toaletka"
 
-sync_schedule_enabled = false
+# Run the sync every 30 minutes. Scans can also be started from the UI.
+sync_schedule_enabled = true
 olx_query             = "toaletki"
 
 # custom_domain = {

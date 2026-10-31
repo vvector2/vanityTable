@@ -32,7 +32,7 @@ EventBridge (rate 30 min) --> Sync Lambda ----------------------+
 
 | Component                              | Responsibility                                                                                         |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| EventBridge rule                       | Triggers the sync Lambda with `rate(30 minutes)`                                                       |
+| EventBridge rule                       | Triggers the sync Lambda with `rate(30 minutes)`; enabled in `prod`, disabled in `dev` (scans start from the UI) |
 | Sync Lambda                            | Fetches listings, applies criteria, sends new listings to the Listings API (`POST /listings`)          |
 | Source adapter (module in sync Lambda) | The only code that knows OLX. Returns normalized listings. Replaceable.                                |
 | Listings API (Lightsail container)     | FastAPI. Lists listings by status, records decisions, accepts listings from the sync job. See `llstingApi.md` |

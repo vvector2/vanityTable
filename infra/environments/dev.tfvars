@@ -5,6 +5,7 @@ environment = "dev"
 aws_account_id = "090700103422"
 name           = "toaletka"
 
+# No 30-minute schedule in dev: start scans from the UI or invoke the Lambda by hand.
 sync_schedule_enabled = false
 olx_query             = "toaletki"
 
