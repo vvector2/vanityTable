@@ -1,6 +1,6 @@
 # Toaletka: Architecture
 
-Date: 2026-10-31 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account; local and CI scripts split (`scripts/local`, `scripts/ci`); all API calls use Cognito tokens (API keys removed); failed OLX pages are retried after 30 to 60 s (403, 5xx, timeouts; not 429 or captcha) and results pages are about 15 s apart, after OLX blocked faster paging. Sections marked _(proposal)_ are not yet agreed.
+Date: 2026-10-31 | Status: draft, based on `mpv.md`; Saved Searches (`SeachCriteria.Feature.md`) added in sections 4 to 7 and 10; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account; local and CI scripts split (`scripts/local`, `scripts/ci`); all API calls use Cognito tokens (API keys removed); failed OLX pages are retried after 30 to 60 s (403, 5xx, timeouts; not 429 or captcha) and results pages are about 15 s apart, after OLX blocked faster paging. Sections marked _(proposal)_ are not yet agreed.
 
 ## 1. Decisions so far
 
@@ -11,6 +11,7 @@ Date: 2026-10-31 | Status: draft, based on `mpv.md`; hosting, access, Terraform 
 | Backend                | Python: sync job on Lambda (container image), Listings API on FastAPI   |
 | UI                     | Simple React app, mobile-friendly                                       |
 | Persistence            | DynamoDB                                                                |
+| Searches               | A `Searches` table holds each search and its criteria; listings carry a `searchId` |
 | Access protection      | OAuth 2.0 with a Cognito user pool: one UI user (no self sign-up, code flow with PKCE), M2M clients (client credentials) for the sync job and for admin deletes. No API keys |
 | Entry point            | CloudFront serves the UI at `/` and forwards `/api/*` to the Listings API. Route 53 custom domain optional |
 | Infrastructure as code | Terraform, one root with modules `common`, `frontend`, `listing_api`, `sync_job` |
@@ -60,6 +61,30 @@ The deployed table follows `llstingApi.md`, section DynamoDB:
 
 Still open _(proposal, not in the table yet)_: `match_score`, `expired`, `last_seen`, `price_at_decision`, a `filtered` status for listings seen but not passing the criteria (avoids re-fetching descriptions, helps tune the threshold), and a sync metadata item holding `last_success_at`.
 
+### Saved Searches data model
+
+New table `Searches`: on-demand, partition key `id` (S, UUID).
+
+| Attribute   | Notes                                              |
+| ----------- | -------------------------------------------------- |
+| `id`        | UUID                                               |
+| `userId`    | Cognito `sub`; one user for now, kept for later    |
+| `title`     | Shown on the home screen                           |
+| `criteria`  | Map, see `SeachCriteria.Feature.md` section 4      |
+| `status`    | `active` for now; pausing comes later              |
+| `createdAt`, `updatedAt` | ISO-8601 UTC                          |
+
+GSIs: `userId-createdAt-index` (home screen) and `status-createdAt-index` (the sync job reads the active searches).
+
+Changes to the `Listings` table:
+
+- New attribute `searchId`.
+- `id` becomes a UUIDv5 of `searchId` + `:` + `sourceId`. The same ad in two searches is two items with independent statuses. A repeated POST for the same pair still returns `409`.
+- New attribute `searchStatus` = `<searchId>#<status>`, rewritten on every status change. A GSI key is one attribute, so the composite is stored explicitly.
+- GSI `searchStatus-firstSeenAt-index` replaces `status-firstSeenAt-index`. A tab is one query, newest first, as before.
+- GSI `sourceId-index` stays and may now return one item per search.
+- Counts per search: three GSI queries with `Select=COUNT`. Fine for a few searches.
+
 ## 5. Sync flow _(proposal)_
 
 1. Read config from SSM (threshold, exceptions).
@@ -69,6 +94,8 @@ Still open _(proposal, not in the table yet)_: `match_score`, `expired`, `last_s
    - Unknown: fetch the description if needed, compute the fuzzy score, check active and photo criteria. Store as `new` if it passes, otherwise as `filtered`.
 4. If the fetch completed fully, mark known listings missing from the results as `expired` (details depend on the spike).
 5. Write `last_success_at` last, only if everything above succeeded.
+
+With Saved Searches: steps 2 to 5 run once per active search (read from the API), the OLX query is built from the criteria, and the "known" check uses the search and `sourceId` pair. `last_success_at` stays global and is written after all searches succeed. Until the sync scaling feature (queue, one request stream, cap on active searches), searches run one after another in one run, so keep active searches at 3 or fewer.
 
 Failure rules:
 
@@ -84,12 +111,26 @@ Failure rules:
 - Pass if the score is at or above the threshold from SSM and the word is not on the exceptions list.
 - Active and at least one photo are exact checks.
 - Threshold is tuned empirically during testing. Starting bias: let more through.
+- With Saved Searches: every word in `criteria.keywords` is compared as above and the best score is stored. A listing containing an `excludeKeywords` word is dropped. Price and location go into the OLX query and are checked again locally. Threshold and exceptions stay global.
 
 ## 7. API
 
 The Listings API endpoints are defined in `llstingApi.md`: `GET /listings?status=new|saved|rejected`, `PUT /listings/{id}/status` (accept, reject, undo), `GET /listings/counts`, `POST /listings` (sync job), `DELETE /listings/{id}` (admin) and `GET /health`.
 
 Still open _(proposal)_: an endpoint for `last_success_at` (functional requirement 7).
+
+With Saved Searches (`llstingApi.md` is updated to match):
+
+| Method | Path             | Description                                                              |
+| ------ | ---------------- | ------------------------------------------------------------------------ |
+| GET    | `/searches`      | List searches with counts per status; optional `status` filter           |
+| POST   | `/searches`      | Create a search                                                          |
+| GET    | `/searches/{id}` | One search, for the criteria view                                            |
+| DELETE | `/searches/{id}` | Delete the search and its listings                                       |
+
+- `GET /listings` and `GET /listings/counts` take a required `searchId`. `POST /listings` takes `searchId`. The `409` rule applies to the search and `sourceId` pair.
+- New scopes: `searches/read` (UI and sync job) and `searches/write` (UI).
+- No `PUT /searches/{id}` for now (no edit, no pause). To change the criteria, delete the search and create a new one.
 
 Access: Cognito access tokens (`Authorization: Bearer`), validated by the API. Scopes `listings/read` and `listings/decide` (UI), `listings/create` (sync job), `listings/admin` (admin client). Endpoint mapping in `llstingApi.md`, section Auth.
 
@@ -99,7 +140,7 @@ Access: Cognito access tokens (`Authorization: Bearer`), validated by the API. S
 
 | Module        | Resources                                                                                          |
 | ------------- | -------------------------------------------------------------------------------------------------- |
-| `common`      | DynamoDB `Listings` table and GSI, Cognito user pool, domain and `listings` resource server, admin M2M client and its SSM secret |
+| `common`      | DynamoDB `Listings` table and GSI, `Searches` table, Cognito user pool, domain and `listings` resource server, admin M2M client and its SSM secret |
 | `frontend`    | S3 bucket, CloudFront (OAC, `/api/*` behavior, prefix-stripping function), optional ACM + Route 53, Cognito UI client |
 | `listing_api` | ECR repository, Lightsail container service and deployment, IAM user for DynamoDB, API keys        |
 | `sync_job`    | ECR repository, Lambda (container image), EventBridge rule, Cognito M2M client, SSM secret |
@@ -123,11 +164,13 @@ Access: Cognito access tokens (`Authorization: Bearer`), validated by the API. S
 - **AWS IP ranges.** Lambda requests come from data-center IPs, which OLX may challenge or block more often than a home connection. The spike must run from Lambda, not a laptop. Fallbacks: a small fetcher at home pushing data to AWS, or a fixed IP via NAT Gateway (costs much more than the rest of the stack and does not hide the data-center origin).
 - **JavaScript-rendered pages.** If OLX pages need a headless browser, Lambda packaging gets heavier. The spike will show whether this is needed.
 - **Silent failure.** With no alerting, a broken sync is noticed only by a stale timestamp in the UI.
+- **More searches, more OLX requests.** Every active search adds pages to the single request stream, which raises the block risk and the run time. The sync scaling feature handles it; the interim limit is in section 5.
 
 ## 10. Open items
 
 - **Spike results** (pending) decide: query scope versus fuzzy search, how to get descriptions, and how listing activity is detected.
 - **First-run behavior:** all existing matches go to review, or sort by newest.
+- **Saved Searches:** how OLX takes price and location in the query (spike); multiple users (`userId` is kept in the model). Edit and pause (`PUT /searches/{id}`) come later.
 
 ## 11. Next steps
 
@@ -135,3 +178,4 @@ Access: Cognito access tokens (`Authorization: Bearer`), validated by the API. S
 2. Confirm the data model and sync flow against the spike results.
 3. `dev` has its state bucket, OIDC provider and `github-actions-dev` role; set up the GitHub environments and deploy it through CI. For `prod`, create the same by hand (`terraform-state-s3-vt-prod`, `github-actions-prod`), see `infra/README.md`.
 4. ~~Validate Cognito tokens in the Listings API and use client credentials in the sync job; drop the API keys~~: done.
+5. Saved Searches: update `llstingApi.md` (see sections 4 to 7); the feature is described in `SeachCriteria.Feature.md`.
