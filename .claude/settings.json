@@ -15,6 +15,13 @@
       "PowerShell(gh pr create *)",
       "PowerShell(gh pr merge *)",
       "PowerShell(gh repo sync *)",
+      "Bash(aws)",
+      "Bash(aws *)",
+      "Bash(aws.exe *)",
+      "PowerShell(aws)",
+      "PowerShell(aws *)",
+      "PowerShell(aws.exe *)",
+      "mcp__aws-mcp__aws___run_script",
       "mcp__ccd_pr__set_auto_merge"
     ]
   }
