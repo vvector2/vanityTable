@@ -15,6 +15,11 @@ from fastapi import Depends, Header, Request
 from app.api_layer.errors import ApiError
 
 
+# Seconds of clock skew allowed on `iat` and `exp`. Without it a fresh token is rejected as not yet
+# valid when this machine's clock is even slightly behind Cognito's.
+CLOCK_SKEW_SECONDS = 30
+
+
 class InvalidToken(Exception):
     pass
 
@@ -43,6 +48,7 @@ class TokenVerifier:
                 key,
                 algorithms=["RS256"],
                 issuer=self._issuer,
+                leeway=CLOCK_SKEW_SECONDS,
                 options={"require": ["exp", "iss", "sub", "token_use"], "verify_aud": False},
             )
         except jwt.PyJWTError as error:
