@@ -37,14 +37,13 @@ function SearchLayout() {
   return (
     <ScanProvider onNewResults={reload}>
       <div className="app">
-        <Header>
-          <ScanControl />
-        </Header>
+        <Header />
         <ScanBanner />
         <main className="app-main">
           <a className="back-link" href="#/">
             ← Moje wyszukiwania
           </a>
+          <ScanControl />
           <StatusTabs />
           <ErrorBanner />
           <TabContent />

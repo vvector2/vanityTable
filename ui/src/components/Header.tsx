@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { signOut } from "../auth";
 
 function MirrorIcon() {
@@ -20,8 +19,7 @@ function MirrorIcon() {
   );
 }
 
-// children: page controls shown between the brand and the sign-out button.
-export default function Header({ children }: { children?: ReactNode }) {
+export default function Header() {
   return (
     <header className="app-header">
       <a className="brand" href="#/">
@@ -33,7 +31,6 @@ export default function Header({ children }: { children?: ReactNode }) {
           <p className="brand-tagline">Ogłoszenia z OLX, które pasują do Twoich kryteriów</p>
         </div>
       </a>
-      {children}
       <button type="button" className="btn-sign-out" onClick={() => void signOut()}>
         Wyloguj
       </button>

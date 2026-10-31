@@ -142,8 +142,6 @@ button {
 /* Scan control */
 
 .scan {
-  order: 3;
-  flex: 1 1 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -908,11 +906,6 @@ button {
   .app-header {
     gap: 16px;
     padding: 28px 48px;
-  }
-
-  .scan {
-    order: 0;
-    flex: 0 1 auto;
   }
 
   .scan-banner {

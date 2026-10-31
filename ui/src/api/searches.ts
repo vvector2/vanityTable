@@ -36,3 +36,13 @@ export async function fetchSearches(signal?: AbortSignal): Promise<Search[]> {
   const { data } = await apiClient.get<SearchDto[]>("/searches", { signal });
   return data.map(toSearch);
 }
+
+export interface NewSearch {
+  title: string;
+  criteria: Partial<SearchCriteria> & { keywords: string[] };
+}
+
+export async function createSearch(search: NewSearch): Promise<Search> {
+  const { data } = await apiClient.post<SearchDto>("/searches", search);
+  return toSearch(data);
+}

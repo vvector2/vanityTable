@@ -23,7 +23,7 @@ function Spinner() {
   return <span className="spin" aria-hidden="true" />;
 }
 
-// Last scan time and the "scan now" button in the header. The last successful scan stays
+// Last scan time and the "scan now" button, shown above the page content. The last successful scan stays
 // visible while a scan runs or after one failed, so a broken sync is noticeable.
 export default function ScanControl() {
   const { phase, lastSuccessAt, checkFailed, startScan } = useScan();

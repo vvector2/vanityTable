@@ -1,31 +1,71 @@
 import { useCallback, useEffect, useState } from "react";
 import { isCancel } from "axios";
 import { errorMessage } from "../api/client";
-import { fetchSearches } from "../api/searches";
-import { ScanProvider } from "../state/ScanContext";
+import { createSearch, fetchSearches } from "../api/searches";
 import type { Search } from "../types";
 import Header from "../components/Header";
-import ScanBanner from "../components/ScanBanner";
-import ScanControl from "../components/ScanControl";
 import SearchCard from "../components/SearchCard";
 
-// Free-text box from the Home mockup. The AI chat that turns it into criteria is a later
-// feature (docs/SeachCriteria.Feature.md, section 2), so "Szukaj" does nothing yet.
-function SearchPrompt() {
+// Free-text box from the Home mockup. The AI chat that turns the text into criteria is a
+// later feature (docs/SeachCriteria.Feature.md, section 2). Until then "Szukaj" saves a search
+// with fixed criteria; the typed text becomes its title and description.
+const FIXED_CRITERIA = {
+  keywords: ["toaletka"],
+  excludeKeywords: ["toaleta"],
+  priceMin: 500,
+  priceMax: 3000,
+};
+
+function SearchPrompt({ onCreated }: { onCreated: () => void }) {
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const trimmed = text.trim();
+
+  async function submit() {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await createSearch({
+        title: trimmed.slice(0, 80),
+        criteria: { ...FIXED_CRITERIA, description: trimmed.slice(0, 500) },
+      });
+      setText("");
+      onCreated();
+    } catch (error: unknown) {
+      setSaveError(errorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <section className="search-prompt">
       <label htmlFor="search-prompt">Czego szukasz?</label>
       <textarea
         id="search-prompt"
         rows={5}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
         placeholder="Np. retro toaletka z lustrem, jasne drewno, do 600 zł, Warszawa i okolice"
       />
+      {saveError && (
+        <p className="search-prompt-hint" role="alert">
+          Nie udało się zapisać wyszukiwania. {saveError}
+        </p>
+      )}
       <div className="search-prompt-row">
         <p className="search-prompt-hint">
           Opisz własnymi słowami, co, w jakiej cenie i gdzie. Jeśli czegoś zabraknie, dopytam.{" "}
-          <strong>Już wkrótce.</strong>
+          <strong>Na razie zapisuję stałe kryteria: toaletka, 500–3000 zł.</strong>
         </p>
-        <button type="button" className="btn-search" disabled>
+        <button
+          type="button"
+          className="btn-search"
+          disabled={!trimmed || saving}
+          aria-busy={saving}
+          onClick={submit}
+        >
           Szukaj
         </button>
       </div>
@@ -85,18 +125,13 @@ export default function HomePage() {
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
 
   return (
-    <ScanProvider onNewResults={reload}>
-      <div className="app">
-        <Header>
-          <ScanControl />
-        </Header>
-        <ScanBanner />
-        <main className="home-main">
-          <SearchPrompt />
-          <h2 className="section-title">Moje wyszukiwania</h2>
-          <SearchList reloadKey={reloadKey} reload={reload} />
-        </main>
-      </div>
-    </ScanProvider>
+    <div className="app">
+      <Header />
+      <main className="home-main">
+        <SearchPrompt onCreated={reload} />
+        <h2 className="section-title">Moje wyszukiwania</h2>
+        <SearchList reloadKey={reloadKey} reload={reload} />
+      </main>
+    </div>
   );
 }
