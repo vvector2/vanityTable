@@ -1,6 +1,20 @@
 # Sync job
 
-OLX browser bot (`src/olx_browser_bot.py`) and the sync Lambda handler (`src/handler.py`) that runs it and sends the listings to the Listings API.
+OLX browser bot and the sync Lambda handler that runs it and sends the listings to the Listings API.
+
+```
+src/
+  handler.py                 Lambda entry point (handler.lambda_handler)
+  bots/                      browser bots that fetch listings
+    olx_browser_bot.py       OLX search results (the only code that knows OLX)
+  api/                       external services the Lambda calls
+    cognito_token.py         Cognito client credentials token
+    listing_api_client.py    Listings API HTTP client (retries, circuit breaker)
+    listing_upload.py        sends fetched listings to the Listings API
+  local/                     local runners, not used on AWS
+    run_local.py             runs the handler once
+    local_lambda.py          serves the handler behind the Lambda Invoke API (launch.ps1)
+```
 Playwright and Chromium are too big for a zip package, so on AWS the Lambda runs as a container image.
 
 ## Run locally (Python)
@@ -8,8 +22,9 @@ Playwright and Chromium are too big for a zip package, so on AWS the Lambda runs
 ```
 pipenv install --dev
 pipenv run playwright install chromium
-pipenv run python src/run_local.py --max-pages 1      # through the Lambda handler
-pipenv run python src/olx_browser_bot.py --headed     # the bot alone, with a visible browser
+cd src
+pipenv run python -m local.run_local --max-pages 1    # through the Lambda handler
+pipenv run python bots/olx_browser_bot.py --headed   # the bot alone, with a visible browser
 ```
 
 From the repository root, with the app running (`launch.cmd`), `quickSync` fetches the first OLX page and uploads it to the local API (`quickSync -Pages 3` for more). The local table starts empty, so this is how it gets data.
@@ -56,10 +71,14 @@ The 30-minute schedule exists but is off. Turn it on with `-var sync_schedule_en
 | `query`     | `OLX_QUERY`          | `toaletki` |
 | `max_pages` | `MAX_PAGES`          | all pages  |
 | `delay`     | `PAGE_DELAY_SECONDS` | `0.5` (plus a random 0 to 0.5 s) |
+| `attempts`  | `PAGE_ATTEMPTS`      | `3` (loads per page on 403, 5xx, timeout or network error) |
+| `retry_max_wait` | `PAGE_RETRY_MAX_WAIT_SECONDS` | `10` (a failed page is loaded again after a random 2 to 10 s) |
+
+A 429 or a captcha stops the run at once. Every failed response is logged as one `Failed response: {...}` JSON line (status, final URL, redirects, headers with cookie names only, page title, start of the body). In CloudWatch Logs Insights: `filter @message like /Failed response/`.
 
 ## Upload to the Listings API
 
-After the fetch, every listing is sent to `POST /listings` of the Listings API (`src/listing_upload.py`), one request at a time.
+After the fetch, every listing is sent to `POST /listings` of the Listings API (`src/api/listing_upload.py`), one request at a time.
 
 - Idempotent: `sourceId` in the body is the key, the website name plus the listing's ID on that website (`olx:<OLX ID>`). `201` means created, `409` means it already existed. Existing listings are never changed.
 - A failed listing is logged and skipped; the rest are still sent and the next run tries it again.

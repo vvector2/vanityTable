@@ -26,7 +26,11 @@ class ScanTrigger:
 
     def request_scan(self, job_id: str) -> None:
         if not self._function_name:
-            logger.warning("SCAN_FUNCTION_NAME not set, scan job %s was not sent to the sync job", job_id)
+            logger.warning(
+                "SCAN_FUNCTION_NAME not set, scan job %s was not sent to the sync job; run it with: quickSync -JobId %s",
+                job_id,
+                job_id,
+            )
             return
         try:
             # "Event" queues the run and returns 202 at once; the run itself takes minutes.

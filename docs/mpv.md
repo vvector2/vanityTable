@@ -1,6 +1,6 @@
 # Toaletka: MVP Requirements and Plan
 
-Date: 2026-10-19 | Status: requirements gathered, technology chosen (see `architecture.md`), OLX data spike pending
+Date: 2026-10-22 | Status: requirements gathered, page retry rule added (section 7), technology chosen (see `architecture.md`), OLX data spike pending
 
 ## 1. Goal
 
@@ -84,6 +84,7 @@ A listing matches when it meets all three conditions:
 
 - One request every 30 minutes, a reasonable User-Agent, no parallelism.
 - Stop on a 429 error or captcha; no circumventing protections.
+- On a 403, a server error or a timeout, load the same page again after a short random wait (at most 10 s), up to 3 attempts, then stop.
 - Fallback plan: OLX's built-in saved search with notifications.
 
 ## 8. Risks and inconsistencies to resolve

@@ -17,12 +17,13 @@ param(
 $ErrorActionPreference = "Stop"
 . "$PSScriptRoot\cognito-settings.ps1"
 $cognito = Get-CognitoSettings -Env $Env
+if (-not $cognito.AdminClientId -or -not $cognito.AdminClientSecretParameter) {
+    throw "Terraform outputs for the admin client are missing; apply $Env first"
+}
 
 $secret = $env:COGNITO_ADMIN_CLIENT_SECRET
 if (-not $secret) {
-    $secret = aws ssm get-parameter --region eu-central-1 --name $cognito.AdminClientSecretParameter `
-        --with-decryption --query Parameter.Value --output text
-    if ($LASTEXITCODE -ne 0) { throw "Could not read $($cognito.AdminClientSecretParameter) from SSM" }
+    $secret = Get-SsmSecret $cognito.AdminClientSecretParameter
 }
 
 $basic = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$($cognito.AdminClientId):$secret"))

@@ -11,7 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from listing_api_client import TRANSIENT_STATUSES, USER_AGENT, ListingApiError, read_error_body
+from api.listing_api_client import TRANSIENT_STATUSES, USER_AGENT, ListingApiError, read_error_body
 
 # Fetch a new token this many seconds before the old one expires.
 EXPIRY_MARGIN_SECONDS = 60

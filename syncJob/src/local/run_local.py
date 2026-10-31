@@ -1,4 +1,7 @@
-"""Runs the sync Lambda handler locally: pipenv run python src/run_local.py [--max-pages 1]"""
+"""Runs the sync Lambda handler locally: pipenv run python -m local.run_local [--max-pages 1]
+
+Run from syncJob/src, so the handler and its packages import as they do on Lambda.
+"""
 
 import argparse
 import json

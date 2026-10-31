@@ -1,6 +1,6 @@
 """Browser bot that loads OLX search results and returns every listing.
 
-Spike tool. Run locally: pipenv run python src/olx_browser_bot.py --query toaletki
+Spike tool. Run locally: pipenv run python src/bots/olx_browser_bot.py --query toaletki
 On AWS it runs inside the sync Lambda container image (see handler.py, Dockerfile).
 
 It drives headless Chromium through every results page of
@@ -11,8 +11,13 @@ contract in docs/architecture.md (section 3) plus a few non-personal extras.
 Fetching rules (.claude/rules/olx-adapter.md):
 - one page at a time, with a short randomized pause between pages
 - an honest User-Agent
-- stop on HTTP 429, captcha or any fetch error; no retries
+- stop on HTTP 429 or captcha; no retries
+- on HTTP 403, 5xx, a timeout or a network error, wait a random few seconds and reload
+  the same page, up to a few attempts; then stop
 - seller data (user, contact, map coordinates) is never stored
+
+Every failed page load is logged with its status, headers, page title and the start of
+the body, so blocks (e.g. a 403 from a bot filter) can be told apart in CloudWatch.
 """
 
 import argparse
@@ -24,11 +29,13 @@ import random
 import re
 import sys
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote
 
-from playwright.sync_api import Page, Route, sync_playwright
+from playwright.sync_api import Error as PlaywrightError
+from playwright.sync_api import Page, Response, Route, sync_playwright
 
 logger = logging.getLogger("olx_browser_bot")
 
@@ -42,10 +49,25 @@ STATE_VAR = "window.__PRERENDERED_STATE__"
 PAGE_DELAY_JITTER_SECONDS = 0.5
 # Lambda has no user namespaces, a tiny /dev/shm and no GPU, so Chromium needs these flags there.
 LAMBDA_CHROMIUM_ARGS = ["--no-sandbox", "--no-zygote", "--single-process", "--disable-gpu", "--disable-dev-shm-usage"]
+# A failed page is loaded again after a random wait in this range, up to PAGE_ATTEMPTS times in all.
+PAGE_ATTEMPTS = 3
+RETRY_MIN_WAIT_SECONDS = 2.0
+RETRY_MAX_WAIT_SECONDS = 10.0
+# Worth another attempt: a bot filter or a short outage, not a request to slow down.
+RETRYABLE_STATUSES = {403} | set(range(500, 600))
+# How much of a failed response goes to the log.
+ERROR_BODY_CHARS = 1500
 
 
 class FetchStopped(Exception):
-    """Raised when the run must stop: HTTP error, 429, captcha or missing data."""
+    """Raised when a page could not be read: HTTP error, 429, captcha or missing data.
+
+    `retryable` is True when loading the same page again may work (403, 5xx, timeout, network).
+    """
+
+    def __init__(self, message: str, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 def search_url(query: str, page_number: int) -> str:
@@ -114,23 +136,91 @@ def read_state(page: Page, document_html: str) -> dict[str, Any]:
 def check_for_captcha(page: Page) -> None:
     text = (page.title() + " " + page.inner_text("body")[:5000]).lower()
     if any(marker in text for marker in CAPTCHA_MARKERS):
+        logger.warning("Challenge page: title=%r body_start=%r", safe(page.title), re.sub(r"\s+", " ", text[:500]))
         raise FetchStopped(f"Captcha or bot challenge on {page.url}")
+
+
+def safe(read: Callable[[], Any]) -> Any:
+    """Runs a read for the diagnostic log; a failing read must not hide the original error."""
+    try:
+        return read()
+    except Exception as exc:  # noqa: BLE001 - diagnostics only
+        return f"<unreadable: {type(exc).__name__}>"
+
+
+def log_failed_response(page: Page, url: str, response: Response, elapsed: float) -> None:
+    """Logs what OLX (or a filter in front of it) sent back, as one JSON line for CloudWatch Insights."""
+    headers = safe(response.all_headers)
+    if isinstance(headers, dict) and "set-cookie" in headers:
+        # Cookie values are not needed to tell a block apart; their names are.
+        headers["set-cookie"] = [line.split("=", 1)[0] for line in headers["set-cookie"].split("\n")]
+    body = safe(response.text)
+    redirects = []
+    request = response.request.redirected_from
+    while request is not None:
+        redirects.append(request.url)
+        request = request.redirected_from
+    details = {
+        "url": url,
+        "final_url": response.url,
+        "redirected_from": redirects,
+        "status": response.status,
+        "status_text": response.status_text,
+        "elapsed_seconds": round(elapsed, 2),
+        "title": safe(page.title),
+        "headers": headers,
+        "body_length": len(body),
+        "body_start": re.sub(r"\s+", " ", body[:ERROR_BODY_CHARS]),
+    }
+    logger.warning("Failed response: %s", json.dumps(details, ensure_ascii=False, default=str))
 
 
 def load_results_page(page: Page, url: str) -> dict[str, Any]:
     logger.info("Loading %s", url)
-    response = page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+    started = time.monotonic()
+    try:
+        response = page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+    except PlaywrightError as exc:
+        # Timeouts and network errors (net::ERR_...) land here.
+        elapsed = time.monotonic() - started
+        logger.warning("Request failed after %.1f s on %s: %s: %s", elapsed, url, type(exc).__name__, exc)
+        raise FetchStopped(f"{type(exc).__name__} on {url}: {str(exc).splitlines()[0]}", retryable=True) from exc
+    elapsed = time.monotonic() - started
     if response is None:
-        raise FetchStopped(f"No response for {url}")
+        raise FetchStopped(f"No response for {url}", retryable=True)
+    if response.status >= 400:
+        log_failed_response(page, url, response, elapsed)
     if response.status == 429:
         raise FetchStopped(f"HTTP 429 Too Many Requests on {url}")
     if response.status >= 400:
-        raise FetchStopped(f"HTTP {response.status} on {url}")
+        raise FetchStopped(f"HTTP {response.status} on {url}", retryable=response.status in RETRYABLE_STATUSES)
+    logger.info("HTTP %d in %.1f s", response.status, elapsed)
     check_for_captcha(page)
     listing = (read_state(page, response.text()).get("listing") or {}).get("listing")
     if not listing or "ads" not in listing:
         raise FetchStopped(f"Listing data missing in app state on {url}")
     return listing
+
+
+def load_with_retries(page: Page, url: str, attempts: int, max_wait: float) -> tuple[dict[str, Any], int]:
+    """Loads a results page, loading it again after a random wait on a retryable error.
+
+    Returns the listing data and the number of retries it took. Raises FetchStopped when
+    the error is not retryable or the last attempt failed.
+    """
+    attempts = max(1, attempts)
+    for attempt in range(1, attempts + 1):
+        try:
+            return load_results_page(page, url), attempt - 1
+        except FetchStopped as exc:
+            if not exc.retryable or attempt == attempts:
+                if exc.retryable:
+                    raise FetchStopped(f"{exc} (after {attempts} attempts)") from exc
+                raise
+            wait = random.uniform(min(RETRY_MIN_WAIT_SECONDS, max_wait), max_wait)
+            logger.warning("Attempt %d of %d failed: %s; loading again in %.1f s", attempt, attempts, exc, wait)
+            time.sleep(wait)
+    raise AssertionError("unreachable")
 
 
 def chromium_args() -> list[str]:
@@ -144,7 +234,14 @@ def block_heavy_resources(route: Route) -> None:
         route.continue_()
 
 
-def scrape(query: str, delay: float, max_pages: int | None, headed: bool) -> dict[str, Any]:
+def scrape(
+    query: str,
+    delay: float,
+    max_pages: int | None,
+    headed: bool,
+    attempts: int = PAGE_ATTEMPTS,
+    retry_max_wait: float = RETRY_MAX_WAIT_SECONDS,
+) -> dict[str, Any]:
     result: dict[str, Any] = {
         "query": query,
         "source_url": search_url(query, 1),
@@ -156,6 +253,7 @@ def scrape(query: str, delay: float, max_pages: int | None, headed: bool) -> dic
         "reported_visible": None,
         "total_pages": None,
         "pages_fetched": 0,
+        "retries": 0,
         "listing_count": 0,
         "listings": [],
     }
@@ -170,7 +268,8 @@ def scrape(query: str, delay: float, max_pages: int | None, headed: bool) -> dic
         try:
             page_number = 1
             while True:
-                listing = load_results_page(page, search_url(query, page_number))
+                listing, retries = load_with_retries(page, search_url(query, page_number), attempts, retry_max_wait)
+                result["retries"] += retries
                 result["pages_fetched"] = page_number
                 if page_number == 1:
                     result["reported_total"] = listing.get("totalElements")
@@ -232,10 +331,19 @@ def main() -> int:
     )
     parser.add_argument("--max-pages", type=int, default=None, help="stop after this many pages")
     parser.add_argument("--headed", action="store_true", help="show the browser window")
+    parser.add_argument(
+        "--attempts", type=int, default=PAGE_ATTEMPTS, help=f"loads per page on 403/5xx/timeout (default: {PAGE_ATTEMPTS})"
+    )
+    parser.add_argument(
+        "--retry-max-wait",
+        type=float,
+        default=RETRY_MAX_WAIT_SECONDS,
+        help=f"longest random wait before loading a page again (default: {RETRY_MAX_WAIT_SECONDS:g})",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    result = scrape(args.query, args.delay, args.max_pages, args.headed)
+    result = scrape(args.query, args.delay, args.max_pages, args.headed, args.attempts, args.retry_max_wait)
     return 0 if result["complete"] else 1
 
 

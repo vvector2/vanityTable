@@ -1,6 +1,6 @@
 # Toaletka: Architecture
 
-Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account; local and CI scripts split (`scripts/local`, `scripts/ci`); all API calls use Cognito tokens (API keys removed). Sections marked _(proposal)_ are not yet agreed.
+Date: 2026-10-22 | Status: draft, based on `mpv.md`; hosting, access, Terraform layout, environments (one AWS account each) and CI/CD decided; CI role created by hand per account; local and CI scripts split (`scripts/local`, `scripts/ci`); all API calls use Cognito tokens (API keys removed); failed OLX pages are retried (403, 5xx, timeouts; not 429 or captcha). Sections marked _(proposal)_ are not yet agreed.
 
 ## 1. Decisions so far
 
@@ -72,8 +72,9 @@ Still open _(proposal, not in the table yet)_: `match_score`, `expired`, `last_s
 
 Failure rules:
 
-- Any fetch error, captcha or HTTP 429 stops the run. Nothing is marked expired, no decisions are touched, `last_success_at` is not updated.
-- No retries within the run and no circumvention of blocks.
+- Captcha or HTTP 429 stops the run at once. HTTP 403, 5xx, a timeout or a network error reloads the same page after a random wait of at most 10 s, up to 3 attempts in all (`PAGE_ATTEMPTS`, `PAGE_RETRY_MAX_WAIT_SECONDS`); if the last attempt fails, the run stops. A stopped run marks nothing expired, touches no decisions and does not update `last_success_at`.
+- The run is never restarted from the first page, and blocks are never circumvented.
+- Every failed response is logged with its status, headers, title and the start of its body, to tell a bot filter from an outage.
 - Fetch rules: one request stream, reasonable User-Agent, no parallelism.
 
 ## 6. Matching logic

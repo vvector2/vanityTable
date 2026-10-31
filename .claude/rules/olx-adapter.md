@@ -10,7 +10,9 @@ paths:
 - Fetching rules are mandatory:
   - one request stream, no parallelism or async fan-out
   - a reasonable, honest User-Agent
-  - stop on HTTP 429, captcha or any fetch error by raising; no retries within a run
+  - stop on HTTP 429 or captcha by raising; no retries
+  - on HTTP 403, 5xx, a timeout or a network error, reload the same page after a random wait of at most 10 s, up to 3 attempts in all; then stop by raising. Never restart the whole run
+  - log every failed response (status, headers, title, start of the body) so blocks can be diagnosed
   - never circumvent blocks: no proxy rotation, header spoofing or captcha solving
 - Fetch a listing page (for the description) only for listings not already known.
 - Tests use saved fixture pages, never live OLX requests.

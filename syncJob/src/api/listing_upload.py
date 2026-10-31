@@ -15,7 +15,7 @@ from typing import Any, Protocol
 
 from pybreaker import CircuitBreakerError
 
-from listing_api_client import CreateOutcome, ListingApiError, source_id
+from api.listing_api_client import CreateOutcome, ListingApiError, source_id
 
 logger = logging.getLogger(__name__)
 
