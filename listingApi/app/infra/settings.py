@@ -13,8 +13,11 @@ class Settings:
     cognito_issuer: str
     # Resource server identifier; scopes are <prefix>/read, /decide, /create and /admin.
     scope_prefix: str
+    # Resource server of the searches; scopes are <prefix>/read and /write.
+    searches_scope_prefix: str
     allowed_origins: list[str]
     scan_jobs_table_name: str
+    searches_table_name: str
     # Sync Lambda that POST /scan-job invokes. Unset: POST /scan-job only records the job.
     scan_function_name: str | None
 
@@ -29,7 +32,9 @@ def load_settings() -> Settings:
         region=os.environ.get("AWS_REGION") or None,
         cognito_issuer=cognito_issuer,
         scope_prefix=os.environ.get("COGNITO_SCOPE_PREFIX") or "listings",
+        searches_scope_prefix=os.environ.get("COGNITO_SEARCHES_SCOPE_PREFIX") or "searches",
         allowed_origins=[o.strip() for o in origins.split(",") if o.strip()],
         scan_jobs_table_name=os.environ.get("SCAN_JOBS_TABLE_NAME", "ScanJobs"),
+        searches_table_name=os.environ.get("SEARCHES_TABLE_NAME", "Searches"),
         scan_function_name=os.environ.get("SCAN_FUNCTION_NAME") or None,
     )

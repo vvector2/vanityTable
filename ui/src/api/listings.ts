@@ -1,7 +1,7 @@
 import type { Listing, ListingStatus } from "../types";
 import { apiClient } from "./client";
 
-// Wire format of the listings API (listingApi/app/models.py).
+// Wire format of the listings API (listingApi/app/dto/listings.py).
 // The API calls the accepted status "saved"; the UI keeps "accepted".
 type ApiStatus = "new" | "saved" | "rejected";
 
