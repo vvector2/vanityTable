@@ -15,9 +15,9 @@ CI access (the GitHub OIDC provider and the `github-actions-<env>` role) is crea
 
 | Folder           | For                         | Holds                                                                                   |
 | ---------------- | --------------------------- | --------------------------------------------------------------------------------------- |
-| `scripts/local/` | Your machine (interactive)  | `deploy.sh`, `nuke-env.sh`, the PowerShell tools (`launch.ps1`, `quick-sync.ps1`, `admin-token.ps1`, `build-*-image.ps1`, `deploy-ui.ps1`) and `localstack-init/` |
-| `scripts/ci/`    | GitHub Actions (never prompt) | `resolve-role.sh`, `plan.sh` and `apply.sh`, one per step of `deploy.yml`              |
-| `scripts/lib/`   | Both                        | `deploy-common.sh`: account check, Terraform init, image build and push, plan, apply, UI upload, smoke test |
+| `scripts/local/` | Your machine (interactive)  | `deploy.sh`, the PowerShell tools (`launch.ps1`, `quick-sync.ps1`, `admin-token.ps1`, `build-*-image.ps1`, `deploy-ui.ps1`) and `localstack-init/` |
+| `scripts/ci/`    | GitHub Actions (never prompt) | `resolve-role.sh`, `plan.sh` and `apply.sh`, one per step of `deploy.yml`; `nuke-env.sh` for `destroy.yml` (asks only when run locally without `--yes`) |
+| `scripts/lib/`   | Both                        | `deploy-common.sh`: account check, Terraform init, image build and push, plan, apply, UI upload, smoke test, destroy |
 
 Change a deploy step in `scripts/lib/deploy-common.sh`, so local and CI deploys stay the same.
 
@@ -56,9 +56,10 @@ aws cognito-idp admin-create-user --user-pool-id <pool-id> --username <email>
 | Workflow            | Trigger                     | Does                                                         |
 | ------------------- | --------------------------- | ------------------------------------------------------------ |
 | `ci.yml`            | Pull request to `master`    | ruff, UI build (with typecheck), `terraform fmt` and `validate`. No AWS access |
-| `deploy-dev.yml`    | Push to `master`            | Calls `deploy.yml` for `dev`                                 |
+| `deploy-dev.yml`    | Push to `master`            | Calls `deploy.yml` for `dev`, unless the repository variable `DEV_AUTO_DEPLOY` is `false` |
 | `deploy-manual.yml` | "Run workflow" from `master` | Calls `deploy.yml` for `dev` or `prod`, with an optional ref  |
 | `deploy.yml`        | Reusable                    | Plan job → approval → apply job, both as `github-actions-<env>` |
+| `destroy.yml`       | "Run workflow" from `master` | Approval → destroys `dev` or `prod` (see Removing the environment) |
 
 The plan job runs `scripts/ci/plan.sh <env>`: it builds and pushes the images, plans, writes the resource changes to the run summary and uploads `tfplan` (kept 1 day; it holds state values, secrets included). The apply job runs in the GitHub environment, waits for approval and runs `scripts/ci/apply.sh <env>` on the same commit. One deploy per environment at a time; a newer one queues.
 
@@ -74,17 +75,21 @@ Each account has its own OIDC provider and one role, `github-actions-<env>`, bot
 
    GitHub puts the owner and repository IDs into `sub` (`owner@<id>/repo@<id>`), so a pattern like `repo:vvector2/vanityTable:*` never matches. CloudTrail's failed `AssumeRoleWithWebIdentity` events show the exact `sub` GitHub sent.
 
-   Its permissions must cover the whole stack (for example `AdministratorAccess`) plus the state bucket. No GitHub variables or secrets are needed.
+   Its permissions must cover the whole stack (for example `AdministratorAccess`) plus the state bucket. No GitHub secrets are needed; the only variable is the optional `DEV_AUTO_DEPLOY`.
 2. Environments (Settings → Environments) `dev` and `prod`: add yourself as a required reviewer, and set deployment branches to `master` only.
 3. Branch protection on `master`: require the `CI` checks (`python`, `ui`, `terraform`).
 
 ## Removing the environment
 
 ```
-AWS_PROFILE=<dev profile> ./scripts/local/nuke-env.sh --env dev
+AWS_PROFILE=<dev profile> ./scripts/ci/nuke-env.sh --env dev
 ```
 
 Destroys everything in the state, including the Listings table (all decisions) and the Cognito user pool. It turns off their deletion protection with the AWS CLI first, and asks you to type the environment name unless you pass `--yes`. Like the deploy scripts, it stops unless you are signed in to that environment's account. The state bucket is kept.
+
+From GitHub: Actions → **Destroy environment** → Run workflow (from `master`), pick the environment and type its name again. The job waits for approval on the GitHub environment, then runs `scripts/ci/nuke-env.sh --env <env> --yes` as `github-actions-<env>`. It shares the deploy queue, so it never runs alongside a deploy.
+
+Every push to `master` deploys `dev` again. To keep `dev` removed, set the repository variable `DEV_AUTO_DEPLOY` to `false` (Settings → Secrets and variables → Actions → Variables); delete it or set it to `true` to resume. `deploy-manual.yml` still deploys `dev` on demand.
 
 ## Notes
 

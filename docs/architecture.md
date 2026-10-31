@@ -108,11 +108,11 @@ Access: Cognito access tokens (`Authorization: Bearer`), validated by the API. S
 - CI access is outside Terraform: in each account the GitHub OIDC provider and the role `github-actions-<env>` are created by hand.
 - Terraform does not build code. Scripts in `scripts/` do, split by where they run:
   - `local/` (your machine, interactive): `deploy.sh --env <env>` builds and pushes both images, plans, asks and applies, then uploads the UI. `build-*-image.ps1` and `deploy-ui.ps1` do single steps; `launch.ps1` and `quick-sync.ps1` run the app locally.
-  - `ci/` (GitHub Actions, never prompt): `plan.sh` and `apply.sh`, one per deploy job.
+  - `ci/` (GitHub Actions, never prompt): `plan.sh` and `apply.sh`, one per deploy job; `nuke-env.sh` removes an environment, from the manual destroy workflow (with `--yes`) or from your machine.
   - `lib/deploy-common.sh`: the deploy steps both use, so a local and a CI deploy do the same.
 - CI/CD (`.github/workflows/`, setup in `infra/README.md`):
   - Pull requests: Python lint, UI build, `terraform fmt` and `validate`. No AWS access.
-  - A push to `master` deploys `dev`. A manual workflow deploys any ref to `dev` or `prod`.
+  - A push to `master` deploys `dev` (switched off by the repository variable `DEV_AUTO_DEPLOY=false`). A manual workflow deploys any ref to `dev` or `prod`; another destroys either, after approval.
   - Each deploy assumes `github-actions-<env>` in the environment's own account (ARN built from its tfvars). The plan job builds and pushes the images (creating the ECR repositories on the first run) and plans. The apply job waits for approval on the GitHub environment, then applies that plan with the same role and uploads the UI.
   - The role trusts this repository's `master` branch (plan job) and its GitHub environment (apply job). Since the role exists before Terraform runs, CI can deploy an empty account.
 

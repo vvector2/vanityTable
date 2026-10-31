@@ -1,4 +1,5 @@
 # Every push to master deploys dev (after approval on the dev environment).
+# Set the repository variable DEV_AUTO_DEPLOY to false to stop this, e.g. after destroying dev.
 name: Deploy dev
 
 on:
@@ -11,6 +12,7 @@ permissions:
 
 jobs:
   deploy:
+    if: vars.DEV_AUTO_DEPLOY != 'false'
     # Queues behind a running deploy instead of cancelling it mid-apply.
     concurrency:
       group: deploy-dev

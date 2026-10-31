@@ -1,4 +1,4 @@
-# Deploy steps shared by the local scripts (scripts/local/deploy.sh, nuke-env.sh) and the
+# Deploy steps shared by the local scripts (scripts/local/deploy.sh) and the
 # pipeline scripts (scripts/ci/*.sh). Not run directly: source it, then call use_env <env>.
 # Callers run with set -euo pipefail.
 
@@ -202,4 +202,45 @@ smoke_test() {
   step "Done ($env)"
   echo "UI:  $ui_url"
   echo "API: $(tf_output api_url)"
+}
+
+# Reads a top-level attribute of a resource in the state, empty when the resource is not there.
+state_attr() {
+  tf state show -no-color "$1" 2>/dev/null \
+    | sed -n "s/^[[:space:]]*$2[[:space:]]*=[[:space:]]*\"\(.*\)\"$/\1/p" | head -n1
+}
+
+# True when the environment's Terraform state lists no resources.
+state_empty() { [[ -z "$(tf state list)" ]]; }
+
+# Writes infra/tfplan that destroys everything in the state.
+tf_plan_destroy() {
+  # Destroy ignores the image tags, but the variables have no default.
+  step "Terraform destroy plan ($env)"
+  tf plan -destroy -input=false -out=tfplan -var-file="$var_file" -var api_image_tag= -var sync_image_tag=
+}
+
+# Applies the destroy plan from tf_plan_destroy. The table and the user pool are protected against
+# deletion (modules/common), so Terraform cannot remove them until the protection is off. Done with
+# the AWS CLI so the Terraform code keeps the protection for every other apply.
+tf_destroy() {
+  step "Turning off deletion protection"
+  local table pool
+  table="$(state_attr module.common.aws_dynamodb_table.listings name)"
+  if [[ -n "$table" ]]; then
+    aws dynamodb update-table --region "$region" --table-name "$table" \
+      --no-deletion-protection-enabled >/dev/null
+    aws dynamodb wait table-exists --region "$region" --table-name "$table"
+    echo "DynamoDB table $table"
+  fi
+  pool="$(state_attr module.common.aws_cognito_user_pool.main id)"
+  if [[ -n "$pool" ]]; then
+    # update-user-pool resets every setting it is not given; harmless here, the pool is deleted next.
+    aws cognito-idp update-user-pool --region "$region" --user-pool-id "$pool" \
+      --deletion-protection INACTIVE
+    echo "Cognito user pool $pool"
+  fi
+
+  # CloudFront and Lightsail take several minutes to delete.
+  tf_apply_plan
 }

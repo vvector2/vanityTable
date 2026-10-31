@@ -1,0 +1,56 @@
+# "Run workflow" button: destroys one whole environment with scripts/ci/nuke-env.sh. Deletes the Listings table with every decision and the Cognito user
+# pool with the UI user. The state bucket is kept, so the next deploy rebuilds the environment.
+# Start it from master: the job runs in the GitHub environment, which allows only master.
+name: Destroy environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to destroy
+        type: choice
+        options: [dev, prod]
+        required: true
+      confirm:
+        description: Type the environment name again to confirm
+        type: string
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TERRAFORM_VERSION: 1.16.6
+  AWS_REGION: eu-central-1
+
+jobs:
+  destroy:
+    name: Destroy (${{ inputs.environment }})
+    if: inputs.confirm == inputs.environment
+    runs-on: ubuntu-latest
+    # Required reviewers on this environment make the job wait for approval.
+    environment: ${{ inputs.environment }}
+    # Shares the deploy queue, so a destroy never runs alongside a deploy of the same environment.
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: source
+        name: Resolve account and role
+        run: ./scripts/ci/resolve-role.sh "${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ steps.source.outputs.role }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Destroy
+        run: ./scripts/ci/nuke-env.sh --env "${{ inputs.environment }}" --yes
